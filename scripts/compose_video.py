@@ -70,19 +70,21 @@ def find_system_font() -> str | None:
     return None
 
 
+_WORD_TO_NUM = {
+    "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+    "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+}
+
+
 def make_drawtext_filter(text: str, font_path: str, position: str = "bottom",
                          start: float = 1.0, duration: float = 4.0,
                          fontsize: int = 72) -> str:
-    """Build an FFmpeg drawtext filter string."""
-    # Escape colon in Windows drive letter for FFmpeg filter syntax
+    """Build an FFmpeg drawtext filter string (legacy / generic use)."""
     esc_font = font_path.replace(":", "\\:")
-    # Escape special chars in text
     safe_text = text.replace("'", "").replace(":", " ").replace("\\", "")
-
     y_map = {"top": "120", "bottom": "h-170", "center": "(h-text_h)/2"}
     y_pos = y_map.get(position, "h-170")
     enable = f"between(t\\,{start}\\,{start + duration})"
-
     return (
         f"drawtext=fontfile='{esc_font}'"
         f":text='{safe_text}'"
@@ -95,25 +97,73 @@ def make_drawtext_filter(text: str, font_path: str, position: str = "bottom",
     )
 
 
+def make_rank_badge_filters(rank: int, name: str, font_path: str,
+                             start: float, duration: float) -> str:
+    """Two stacked drawtext filters: gold rank number + white character name, bottom-left badge."""
+    esc_font = font_path.replace(":", "\\:")
+    safe_name = name.replace("'", "").replace(":", " ").replace("\\", "")
+    enable = f"between(t\\,{start}\\,{start + duration})"
+    rank_f = (
+        f"drawtext=fontfile='{esc_font}'"
+        f":text='#{rank}'"
+        f":fontcolor=0xFFD700"
+        f":fontsize=130"
+        f":x=50"
+        f":y=h-260"
+        f":box=1:boxcolor=0x00000088:boxborderw=22"
+        f":shadowx=4:shadowy=4:shadowcolor=black@1.0"
+        f":enable='{enable}'"
+    )
+    name_f = (
+        f"drawtext=fontfile='{esc_font}'"
+        f":text='{safe_name}'"
+        f":fontcolor=white"
+        f":fontsize=76"
+        f":x=50"
+        f":y=h-130"
+        f":box=1:boxcolor=0x00000077:boxborderw=16"
+        f":shadowx=3:shadowy=3:shadowcolor=black@0.9"
+        f":enable='{enable}'"
+    )
+    return rank_f + "," + name_f
+
+
+def make_cta_filter(font_path: str, start: float, duration: float) -> str:
+    """Red 'LIKE & SUBSCRIBE' banner centered at the bottom."""
+    esc_font = font_path.replace(":", "\\:")
+    enable = f"between(t\\,{start}\\,{start + duration})"
+    return (
+        f"drawtext=fontfile='{esc_font}'"
+        f":text='LIKE  &  SUBSCRIBE'"
+        f":fontcolor=white"
+        f":fontsize=82"
+        f":x=(w-text_w)/2"
+        f":y=h-140"
+        f":box=1:boxcolor=0xFF0000CC:boxborderw=28"
+        f":shadowx=3:shadowy=3:shadowcolor=black@0.8"
+        f":enable='{enable}'"
+    )
+
+
 def get_scene_overlay(scene: dict, scene_idx: int, total_scenes: int, title: str) -> dict | None:
     """Determine what text overlay to apply based on scene position and narration."""
     import re
     narration = scene.get("narration_text", "")
 
-    if scene_idx == 0:
-        # Opening scene: show short title
-        short_title = title[:40].upper() if len(title) > 40 else title.upper()
-        return {"text": short_title, "position": "top", "start": 1.5, "duration": 6.0, "fontsize": 64}
-
     if scene_idx == total_scenes - 1:
-        return {"text": "LIKE & SUBSCRIBE", "position": "bottom", "start": 4.0, "duration": 8.0, "fontsize": 68}
+        return {"style": "cta", "start": 4.0, "duration": 8.0}
 
-    # Detect character introduction: "Number X. Name" or "And number X. Name"
-    m = re.match(r"(?:And )?[Nn]umber (\d+)\.\s+([\w\s]+?)\.", narration)
+    # re.search (not match) so it finds "number" mid-sentence (e.g. "Starting at number five: Saitama")
+    m = re.search(
+        r"[Nn]umber (\w+)\s*[—\-,:]\s*([^,\n]+)",
+        narration,
+    )
     if m:
-        number = m.group(1)
-        name = m.group(2).strip()
-        return {"text": f"#{number} {name.upper()}", "position": "bottom", "start": 1.0, "duration": 5.0, "fontsize": 76}
+        word = m.group(1).lower()
+        rank = _WORD_TO_NUM.get(word, word)
+        words = m.group(2).strip().split()[:4]
+        name = " ".join(words).rstrip(".,!").upper()
+        return {"style": "rank", "rank": rank, "name": name, "start": 1.0, "duration": 5.5}
 
     return None
 
@@ -126,6 +176,7 @@ def parse_args():
     parser.add_argument("--output-dir", required=True, help="Output directory for this run")
     parser.add_argument("--bgm-path", default=None, help="Optional background music path")
     parser.add_argument("--bgm-volume", type=float, default=0.15, help="BGM volume (0-1)")
+    parser.add_argument("--srt-path", default=None, help="Optional SRT subtitle file to embed as a soft track")
     # Legacy support for AI-generated video clips
     parser.add_argument("--videos-dir", default=None, help="Path to AI-generated video clips (legacy mode)")
     return parser.parse_args()
@@ -214,14 +265,26 @@ def create_scene_clip(
     if text_overlay:
         font_path = find_system_font()
         if font_path:
-            drawtext = "," + make_drawtext_filter(
-                text=text_overlay["text"],
-                font_path=font_path,
-                position=text_overlay.get("position", "bottom"),
-                start=text_overlay.get("start", 1.0),
-                duration=text_overlay.get("duration", 4.0),
-                fontsize=text_overlay.get("fontsize", 72),
-            )
+            style = text_overlay.get("style", "basic")
+            if style == "rank":
+                drawtext = "," + make_rank_badge_filters(
+                    text_overlay["rank"], text_overlay["name"], font_path,
+                    text_overlay.get("start", 1.0), text_overlay.get("duration", 5.5),
+                )
+            elif style == "cta":
+                drawtext = "," + make_cta_filter(
+                    font_path,
+                    text_overlay.get("start", 4.0), text_overlay.get("duration", 8.0),
+                )
+            else:
+                drawtext = "," + make_drawtext_filter(
+                    text=text_overlay["text"],
+                    font_path=font_path,
+                    position=text_overlay.get("position", "bottom"),
+                    start=text_overlay.get("start", 1.0),
+                    duration=text_overlay.get("duration", 4.0),
+                    fontsize=text_overlay.get("fontsize", 72),
+                )
 
     if is_image:
         vf = (
@@ -296,7 +359,8 @@ def build_final_video(
         cmd.extend(["-i", str(clip)])
     cmd.extend(["-i", str(audio_path)])
     if bgm_path:
-        cmd.extend(["-i", str(bgm_path)])
+        # -stream_loop -1 loops the BGM infinitely so it never becomes the shortest stream
+        cmd.extend(["-stream_loop", "-1", "-i", str(bgm_path)])
 
     n_clips = len(scene_clips)
     audio_idx = n_clips
@@ -304,9 +368,10 @@ def build_final_video(
 
     filter_parts = []
 
-    # Normalize all clips
+    # Clips are already normalized to 1920x1080@24fps by create_scene_clip — skip redundant rescaling.
+    # Just setsar=1 to guarantee SAR consistency before concat.
     for i in range(n_clips):
-        filter_parts.append(f"[{i}:v]scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=24[v{i}]")
+        filter_parts.append(f"[{i}:v]setsar=1[v{i}]")
 
     # Concatenate
     if n_clips == 1:
@@ -327,7 +392,7 @@ def build_final_video(
     cmd.extend(["-filter_complex", filter_complex])
     cmd.extend(["-map", "[vout]", "-map", "[aout]"])
     cmd.extend([
-        "-c:v", "libx264", "-preset", "medium", "-crf", "18",
+        "-c:v", "libx264", "-preset", "superfast", "-crf", "21",
         "-c:a", "aac", "-b:a", "192k",
         "-r", "24",
         "-shortest",
@@ -419,7 +484,16 @@ def main():
 
         clip_path = temp_dir / f"processed_{i+1:02d}.mp4"
         overlay = get_scene_overlay(scene, i, total_scenes, title) if font_available else None
-        overlay_label = f" [{overlay['text']}]" if overlay else ""
+        if overlay:
+            style = overlay.get("style", "basic")
+            if style == "rank":
+                overlay_label = f" [#{overlay['rank']} {overlay['name']}]"
+            elif style == "cta":
+                overlay_label = " [LIKE & SUBSCRIBE]"
+            else:
+                overlay_label = f" [{overlay.get('text', '')}]"
+        else:
+            overlay_label = ""
         print(f"  Processing scene {i+1}: {source.name} -> {target_duration}s{overlay_label}")
 
         try:
@@ -440,20 +514,37 @@ def main():
     # Build and execute final composition
     output_path = final_dir / "final_video.mp4"
     bgm_path = Path(args.bgm_path) if args.bgm_path else None
+    srt_path = Path(args.srt_path) if args.srt_path else None
 
     print(f"  Composing final video...")
-    cmd = build_final_video(scene_clips, audio_path, output_path, transitions, bgm_path, args.bgm_volume)
+    # If SRT will be embedded, encode to a temp file first, then add subtitles on top
+    encode_output = final_dir / "final_nosub_tmp.mp4" if (srt_path and srt_path.exists()) else output_path
+    cmd = build_final_video(scene_clips, audio_path, encode_output, transitions, bgm_path, args.bgm_volume)
 
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
         if result.returncode != 0:
             print(f"FFmpeg error:\n{result.stderr[-2000:]}")
             state.update_step("step-05-video-composition", "failed")
             sys.exit(1)
     except subprocess.TimeoutExpired:
-        print("ERROR: FFmpeg timed out after 5 minutes")
+        print("ERROR: FFmpeg timed out after 60 minutes")
         state.update_step("step-05-video-composition", "failed")
         sys.exit(1)
+
+    # Add soft subtitle track if requested
+    if srt_path and srt_path.exists():
+        sub_cmd = [
+            _ffmpeg(), "-y",
+            "-i", str(encode_output),
+            "-i", str(srt_path),
+            "-c", "copy", "-c:s", "mov_text",
+            "-metadata:s:s:0", "language=por",
+            str(output_path),
+        ]
+        subprocess.run(sub_cmd, capture_output=True, check=True)
+        encode_output.unlink(missing_ok=True)
+        print(f"  Subtitles embedded from {srt_path.name}")
 
     if validate_output(output_path):
         duration = get_video_duration(output_path)

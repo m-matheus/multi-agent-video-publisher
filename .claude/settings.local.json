@@ -29,7 +29,24 @@
       "Bash(python -c \"import imageio_ffmpeg; ffmpeg = imageio_ffmpeg.get_ffmpeg_exe\\(\\); print\\(ffmpeg\\); import os; print\\(os.listdir\\(os.path.dirname\\(ffmpeg\\)\\)\\)\")",
       "Bash(python -c \"import mutagen; print\\('mutagen available'\\)\")",
       "Bash(python -c \"import mutagen; print\\('ok'\\)\")",
-      "Bash(python scripts/compose_video.py --script-path \"output/top-5-most-overpowered-anime-characters-20260429-101057/script/script.json\" --frames-dir \"output/top-5-most-overpowered-anime-characters-20260429-101057/frames\" --audio-dir \"output/top-5-most-overpowered-anime-characters-20260429-101057/audio\" --output-dir \"output/top-5-most-overpowered-anime-characters-20260429-101057\")"
+      "Bash(python scripts/compose_video.py --script-path \"output/top-5-most-overpowered-anime-characters-20260429-101057/script/script.json\" --frames-dir \"output/top-5-most-overpowered-anime-characters-20260429-101057/frames\" --audio-dir \"output/top-5-most-overpowered-anime-characters-20260429-101057/audio\" --output-dir \"output/top-5-most-overpowered-anime-characters-20260429-101057\")",
+      "Bash(python scripts/generate_images.py --script-path \"output/princesa-jardim-magico-20260429/script/script.json\" --output-dir \"output/princesa-jardim-magico-20260429\")",
+      "Bash(python scripts/generate_voice.py --script-path \"output/princesa-jardim-magico-20260429/script/script.json\" --output-dir \"output/princesa-jardim-magico-20260429\")",
+      "Bash(python scripts/compose_video.py --script-path \"output/princesa-jardim-magico-20260429/script/script.json\" --frames-dir \"output/princesa-jardim-magico-20260429/frames\" --audio-dir \"output/princesa-jardim-magico-20260429/audio\" --output-dir \"output/princesa-jardim-magico-20260429\")",
+      "Bash(python scripts/compose_video.py --script-path \"output/princesa-jardim-magico-20260429/script/script.json\" --frames-dir \"output/princesa-jardim-magico-20260429/images\" --audio-dir \"output/princesa-jardim-magico-20260429/audio\" --output-dir \"output/princesa-jardim-magico-20260429\")",
+      "Bash(python scripts/generate_thumbnail.py --script-path \"output/princesa-jardim-magico-20260429/script/script.json\" --output-dir \"output/princesa-jardim-magico-20260429\")",
+      "Bash(python scripts/fetch_multi_amv.py --urls 'https://www.youtube.com/watch?v=GzeIIFWSXSY,https://www.youtube.com/watch?v=32phrRNZ6IQ,https://www.youtube.com/watch?v=Aw192XYfEeM,https://www.youtube.com/watch?v=sktkYCKKK8A,https://www.youtube.com/watch?v=xmbxe0Jtxmc' --output-dir output/top-5-most-powerful-20260429 --scenes-per-character 3)",
+      "Bash(yt-dlp --version)",
+      "Bash(pip show *)",
+      "Bash(ffprobe -version)",
+      "Bash(python scripts/generate_voice.py --script-path output/top-5-most-powerful-20260429/script/script.json --output-dir output/top-5-most-powerful-20260429)",
+      "Bash(python scripts/compose_video.py --script-path output/top-5-most-powerful-20260429/script/script.json --frames-dir output/top-5-most-powerful-20260429/frames --audio-dir output/top-5-most-powerful-20260429/audio --output-dir output/top-5-most-powerful-20260429)",
+      "Bash(python scripts/generate_thumbnail.py --script-path output/top-5-most-powerful-20260429/script/script.json --output-dir output/top-5-most-powerful-20260429)",
+      "Bash(PYTHONUTF8=1 python scripts/generate_subtitles.py --script-path output/top-5-most-powerful-20260429/script/script.json --audio-dir output/top-5-most-powerful-20260429/audio --output-dir output/top-5-most-powerful-20260429)",
+      "Bash(python scripts/compose_video.py --script-path output/top-5-most-powerful-20260429/script/script.json --frames-dir output/top-5-most-powerful-20260429/frames --audio-dir output/top-5-most-powerful-20260429/audio --output-dir output/top-5-most-powerful-20260429 --srt-path output/top-5-most-powerful-20260429/audio/subtitles.srt)",
+      "Bash(python scripts/fetch_bgm.py --output-dir output/top-5-most-powerful-20260429 --query 'epic anime battle orchestra' --duration 413)",
+      "Bash(python scripts/fetch_bgm.py --output-dir output/top-5-most-powerful-20260429 --search 'epic anime battle orchestra cinematic no copyright')",
+      "Bash(python scripts/compose_video.py --script-path output/top-5-most-powerful-20260429/script/script.json --frames-dir output/top-5-most-powerful-20260429/frames --audio-dir output/top-5-most-powerful-20260429/audio --output-dir output/top-5-most-powerful-20260429 --srt-path output/top-5-most-powerful-20260429/audio/subtitles.srt --bgm-path output/top-5-most-powerful-20260429/audio/bgm.mp3 --bgm-volume 0.12)"
     ]
   }
 }

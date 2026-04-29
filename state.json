@@ -43,42 +43,89 @@
         "step-04-voice-narration": {
           "started_at": "2026-04-29T13:13:32.658429+00:00",
           "status": "completed",
-          "completed_at": "2026-04-29T13:25:44.386279+00:00",
+          "completed_at": "2026-04-29T17:34:02.486955+00:00",
           "outputs": {
-            "narration_path": "output\\top-5-most-overpowered-anime-characters-20260429-101057\\audio\\narration_full.mp3",
+            "narration_path": "output\\top-5-most-powerful-20260429\\audio\\narration_full.mp3",
             "segment_durations": [
-              16.587755102040816,
-              19.33061224489796,
-              20.610612244897958,
-              19.069387755102042,
-              17.47591836734694,
-              16.92734693877551,
-              21.551020408163264,
-              14.915918367346938,
-              23.875918367346937,
-              19.069387755102042,
-              26.43591836734694,
-              22.20408163265306
+              14.680816326530612,
+              15.568979591836735,
+              6.530612244897959,
+              20.19265306122449,
+              37.14612244897959,
+              20.427755102040816,
+              27.951020408163266,
+              15.07265306122449,
+              53.629387755102044,
+              55.95428571428572,
+              4.597551020408163,
+              62.74612244897959,
+              21.707755102040817,
+              22.282448979591837,
+              29.962448979591837
             ],
-            "total_duration": 241.78938775510204
+            "total_duration": 413.20489795918365
           }
         },
         "step-06-thumbnail-creation": {
           "started_at": "2026-04-29T13:13:34.704113+00:00",
           "status": "completed",
-          "completed_at": "2026-04-29T13:13:40.841535+00:00",
+          "completed_at": "2026-04-29T20:36:35.073234+00:00",
           "outputs": {
-            "thumbnail_path": "output\\top-5-most-overpowered-anime-characters-20260429-101057\\thumbnail\\thumbnail.png"
+            "thumbnail_path": "output\\top-5-most-powerful-20260429\\thumbnail\\thumbnail.png"
           }
         },
         "step-05-video-composition": {
           "started_at": "2026-04-29T13:25:53.641223+00:00",
           "status": "completed",
-          "completed_at": "2026-04-29T14:30:22.007349+00:00",
+          "completed_at": "2026-04-29T23:09:12.240321+00:00",
           "outputs": {
-            "video_path": "output\\top-5-most-overpowered-anime-characters-20260429-101057\\final\\final_video.mp4",
-            "duration": 241.75,
-            "size_mb": 175.33
+            "video_path": "output\\top-5-most-powerful-20260429\\final\\final_video.mp4",
+            "duration": 412.65,
+            "size_mb": 300.54
+          }
+        },
+        "step-02-image-generation": {
+          "started_at": "2026-04-29T16:10:49.641526+00:00",
+          "status": "completed",
+          "completed_at": "2026-04-29T16:11:12.045133+00:00",
+          "outputs": {
+            "image_paths": [
+              "output\\princesa-jardim-magico-20260429\\images\\scene_01.png",
+              "output\\princesa-jardim-magico-20260429\\images\\scene_02.png",
+              "output\\princesa-jardim-magico-20260429\\images\\scene_03.png",
+              "output\\princesa-jardim-magico-20260429\\images\\scene_04.png",
+              "output\\princesa-jardim-magico-20260429\\images\\scene_05.png",
+              "output\\princesa-jardim-magico-20260429\\images\\scene_06.png",
+              "output\\princesa-jardim-magico-20260429\\images\\scene_07.png",
+              "output\\princesa-jardim-magico-20260429\\images\\scene_08.png"
+            ]
+          }
+        },
+        "fetch-multi-amv": {
+          "started_at": "2026-04-29T17:06:41.761770+00:00",
+          "status": "completed",
+          "outputs": {
+            "analysis_path": "output\\top-5-most-powerful-20260429\\amv\\amv_analysis.json",
+            "scene_count": 15,
+            "total_duration_seconds": 379.81,
+            "character_count": 5
+          },
+          "completed_at": "2026-04-29T17:26:01.163122+00:00"
+        },
+        "step-04b-subtitles": {
+          "started_at": "2026-04-29T18:22:35.439122+00:00",
+          "status": "completed",
+          "completed_at": "2026-04-29T18:22:35.470168+00:00",
+          "outputs": {
+            "srt_path": "output\\top-5-most-powerful-20260429\\audio\\subtitles.srt"
+          }
+        },
+        "step-bgm-fetch": {
+          "started_at": "2026-04-29T22:42:57.906279+00:00",
+          "status": "completed",
+          "completed_at": "2026-04-29T22:50:56.057055+00:00",
+          "outputs": {
+            "bgm_path": "output\\top-5-most-powerful-20260429\\audio\\bgm.mp3"
           }
         }
       }

@@ -67,7 +67,10 @@ def load_config() -> dict:
         "duration_anime_short": int(os.getenv("DURATION_ANIME_SHORT", "60")),
         "duration_anime_normal": int(os.getenv("DURATION_ANIME_NORMAL", "300")),
         "duration_bedtime": int(os.getenv("DURATION_BEDTIME", "900")),
-        # Optional: external LLM (only for standalone mode)
+        # Pixabay (music API restricted — use Freesound or YouTube URL mode instead)
+        "pixabay_api_key": os.getenv("PIXABAY_API_KEY"),
+        # Freesound (background music search — free key at freesound.org/apiv2/apply/)
+        "freesound_api_key": os.getenv("FREESOUND_API_KEY"),
         "llm_provider": os.getenv("LLM_PROVIDER"),
         "llm_model": os.getenv("LLM_MODEL"),
         "openai_api_key": os.getenv("OPENAI_API_KEY"),
