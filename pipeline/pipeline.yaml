@@ -1,0 +1,88 @@
+name: "YouTube Video Generation Pipeline"
+version: "2.0.0"
+description: "End-to-end pipeline from topic to published YouTube video. Supports real anime frames or AI-generated images."
+
+steps:
+  - id: step-01-script-generation
+    name: "Script Generation"
+    agent: orchestrator (Claude)
+    instruction: pipeline/steps/step-01-script-generation.md
+    depends_on: []
+    checkpoint: true
+    checkpoint_message: "Script ready for review. Approve to continue with media generation."
+    outputs:
+      - "{output_dir}/script/script.json"
+
+  - id: step-02-fetch-frames
+    name: "Fetch Anime Frames"
+    agent: frame-fetcher
+    instruction: pipeline/steps/step-02-fetch-frames.md
+    depends_on:
+      - step-01-script-generation
+    checkpoint: false
+    condition: "content_type == 'anime'"
+    outputs:
+      - "{output_dir}/frames/scene_*.mp4"
+      - "{output_dir}/frames/scene_*.webm"
+
+  - id: step-02-alt-image-generation
+    name: "Generate AI Images"
+    agent: image-illustrator
+    instruction: pipeline/steps/step-02-image-generation.md
+    depends_on:
+      - step-01-script-generation
+    checkpoint: false
+    condition: "content_type == 'bedtime-story'"
+    outputs:
+      - "{output_dir}/images/scene_*.png"
+
+  - id: step-03-voice-narration
+    name: "Voice Narration"
+    agent: vocal-vanguard
+    instruction: pipeline/steps/step-04-voice-narration.md
+    depends_on:
+      - step-01-script-generation
+    checkpoint: false
+    outputs:
+      - "{output_dir}/audio/narration_full.mp3"
+      - "{output_dir}/audio/narration_segments/segment_*.mp3"
+
+  - id: step-04-video-composition
+    name: "Video Composition"
+    agent: composite-conductor
+    instruction: pipeline/steps/step-05-video-composition.md
+    depends_on:
+      - step-02-fetch-frames
+      - step-03-voice-narration
+    checkpoint: false
+    outputs:
+      - "{output_dir}/final/final_video.mp4"
+
+  - id: step-05-thumbnail-creation
+    name: "Thumbnail Creation"
+    agent: thumbnail-tactician
+    instruction: pipeline/steps/step-06-thumbnail-creation.md
+    depends_on:
+      - step-01-script-generation
+    checkpoint: false
+    outputs:
+      - "{output_dir}/thumbnail/thumbnail.png"
+
+  - id: step-06-youtube-publishing
+    name: "YouTube Publishing"
+    agent: publish-pioneer
+    instruction: pipeline/steps/step-07-youtube-publishing.md
+    depends_on:
+      - step-04-video-composition
+      - step-05-thumbnail-creation
+    checkpoint: true
+    checkpoint_message: "Final video and thumbnail ready. Review before publishing to YouTube."
+    outputs:
+      - "{output_dir}/publish_result.json"
+
+parallel_groups:
+  - name: "Media Generation (after script approval)"
+    steps:
+      - step-02-fetch-frames
+      - step-03-voice-narration
+      - step-05-thumbnail-creation

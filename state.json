@@ -1,0 +1,88 @@
+{
+  "current_run": "top-5-most-overpowered-anime-characters-20260429-101057",
+  "runs": [
+    {
+      "run_id": "top-5-most-overpowered-anime-characters-20260429-101057",
+      "topic": "Top 5 Most Overpowered Anime Characters of All Time",
+      "content_type": "anime",
+      "output_dir": "output/top-5-most-overpowered-anime-characters-20260429-101057",
+      "started_at": "2026-04-29T13:13:20.067772+00:00",
+      "completed_at": null,
+      "status": "running",
+      "steps": {
+        "step-01-script-generation": {
+          "started_at": "2026-04-29T13:13:20.071680+00:00",
+          "status": "completed",
+          "completed_at": "2026-04-29T13:13:20.071698+00:00",
+          "outputs": {
+            "script_path": "output/top-5-most-overpowered-anime-characters-20260429-101057/script/script.json"
+          }
+        },
+        "step-02-fetch-frames": {
+          "started_at": "2026-04-29T13:13:31.200185+00:00",
+          "status": "completed",
+          "completed_at": "2026-04-29T14:22:11.471862+00:00",
+          "outputs": {
+            "frame_paths": [
+              "output\\top-5-most-overpowered-anime-characters-20260429-101057\\frames\\scene_01_01.mp4",
+              "output\\top-5-most-overpowered-anime-characters-20260429-101057\\frames\\scene_02_01.mp4",
+              "output\\top-5-most-overpowered-anime-characters-20260429-101057\\frames\\scene_03_01.mp4",
+              "output\\top-5-most-overpowered-anime-characters-20260429-101057\\frames\\scene_04_01.mp4",
+              "output\\top-5-most-overpowered-anime-characters-20260429-101057\\frames\\scene_05_01.mp4",
+              "output\\top-5-most-overpowered-anime-characters-20260429-101057\\frames\\scene_06_01.mp4",
+              "output\\top-5-most-overpowered-anime-characters-20260429-101057\\frames\\scene_07_01.mp4",
+              "output\\top-5-most-overpowered-anime-characters-20260429-101057\\frames\\scene_08_01.mp4",
+              "output\\top-5-most-overpowered-anime-characters-20260429-101057\\frames\\scene_09_01.mp4",
+              "output\\top-5-most-overpowered-anime-characters-20260429-101057\\frames\\scene_10_01.mp4",
+              "output\\top-5-most-overpowered-anime-characters-20260429-101057\\frames\\scene_11_01.mp4",
+              "output\\top-5-most-overpowered-anime-characters-20260429-101057\\frames\\scene_12_01.mp4"
+            ],
+            "total_clips": 12
+          }
+        },
+        "step-04-voice-narration": {
+          "started_at": "2026-04-29T13:13:32.658429+00:00",
+          "status": "completed",
+          "completed_at": "2026-04-29T13:25:44.386279+00:00",
+          "outputs": {
+            "narration_path": "output\\top-5-most-overpowered-anime-characters-20260429-101057\\audio\\narration_full.mp3",
+            "segment_durations": [
+              16.587755102040816,
+              19.33061224489796,
+              20.610612244897958,
+              19.069387755102042,
+              17.47591836734694,
+              16.92734693877551,
+              21.551020408163264,
+              14.915918367346938,
+              23.875918367346937,
+              19.069387755102042,
+              26.43591836734694,
+              22.20408163265306
+            ],
+            "total_duration": 241.78938775510204
+          }
+        },
+        "step-06-thumbnail-creation": {
+          "started_at": "2026-04-29T13:13:34.704113+00:00",
+          "status": "completed",
+          "completed_at": "2026-04-29T13:13:40.841535+00:00",
+          "outputs": {
+            "thumbnail_path": "output\\top-5-most-overpowered-anime-characters-20260429-101057\\thumbnail\\thumbnail.png"
+          }
+        },
+        "step-05-video-composition": {
+          "started_at": "2026-04-29T13:25:53.641223+00:00",
+          "status": "completed",
+          "completed_at": "2026-04-29T14:30:22.007349+00:00",
+          "outputs": {
+            "video_path": "output\\top-5-most-overpowered-anime-characters-20260429-101057\\final\\final_video.mp4",
+            "duration": 241.75,
+            "size_mb": 175.33
+          }
+        }
+      }
+    }
+  ],
+  "schema_version": "1.0.0"
+}

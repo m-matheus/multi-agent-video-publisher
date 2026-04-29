@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "WebFetch(domain:fal.ai)",
+      "WebFetch(domain:docs.fal.ai)",
+      "WebFetch(domain:pypi.org)",
+      "WebFetch(domain:elevenlabs.io)",
+      "WebFetch(domain:developers.google.com)",
+      "Bash(python3 -c \"import sys,json; data=json.load\\(sys.stdin\\); print\\(data[0]['text'][:8000]\\)\")",
+      "Bash(python -c \"import sys,json; data=json.load\\(sys.stdin\\); print\\(data[0]['text'][:8000]\\)\")",
+      "Bash(python -c \"import sys,json; data=json.load\\(sys.stdin\\); text=data[0]['text']; print\\(text[8000:16000]\\)\")",
+      "Bash(python -c \"import sys,json; data=json.load\\(sys.stdin\\); text=data[0]['text']; print\\(text[16000:24000]\\)\")",
+      "Bash(python -c \"import sys,json; data=json.load\\(sys.stdin\\); text=data[0]['text']; print\\(text[24000:32000]\\)\")",
+      "Bash(python -c \"import sys,json; data=json.load\\(sys.stdin\\); text=data[0]['text']; print\\(text[32000:]\\)\")",
+      "Bash(pip install *)",
+      "Bash(ffmpeg -version)",
+      "Bash(where ffmpeg *)",
+      "Bash(winget install *)",
+      "Bash(cmd.exe /c \"winget install --id Gyan.FFmpeg -e --accept-source-agreements --accept-package-agreements\")",
+      "Bash(cmd.exe /c \"choco install ffmpeg -y\")",
+      "Bash(python -c \"import imageio_ffmpeg; print\\(imageio_ffmpeg.get_ffmpeg_exe\\(\\)\\)\")",
+      "Bash(python -c ' *)",
+      "Bash(python scripts/fetch_frames.py --script-path \"output/top-5-most-overpowered-anime-characters-20260429-101057/script/script.json\" --output-dir \"output/top-5-most-overpowered-anime-characters-20260429-101057\")",
+      "Bash(python scripts/generate_voice.py --script-path \"output/top-5-most-overpowered-anime-characters-20260429-101057/script/script.json\" --output-dir \"output/top-5-most-overpowered-anime-characters-20260429-101057\")",
+      "Bash(python scripts/generate_thumbnail.py --script-path \"output/top-5-most-overpowered-anime-characters-20260429-101057/script/script.json\" --output-dir \"output/top-5-most-overpowered-anime-characters-20260429-101057\")",
+      "Bash(python -c \"import imageio_ffmpeg; ffmpeg = imageio_ffmpeg.get_ffmpeg_exe\\(\\); print\\(ffmpeg\\); import os; print\\(os.listdir\\(os.path.dirname\\(ffmpeg\\)\\)\\)\")",
+      "Bash(python -c \"import mutagen; print\\('mutagen available'\\)\")",
+      "Bash(python -c \"import mutagen; print\\('ok'\\)\")",
+      "Bash(python scripts/compose_video.py --script-path \"output/top-5-most-overpowered-anime-characters-20260429-101057/script/script.json\" --frames-dir \"output/top-5-most-overpowered-anime-characters-20260429-101057/frames\" --audio-dir \"output/top-5-most-overpowered-anime-characters-20260429-101057/audio\" --output-dir \"output/top-5-most-overpowered-anime-characters-20260429-101057\")"
+    ]
+  }
+}

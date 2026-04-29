@@ -1,0 +1,24 @@
+# Core
+python-dotenv>=1.0.0
+
+# Image/Video Generation (fal.ai)
+fal-client>=0.4.0
+
+# Voice Generation (ElevenLabs)
+elevenlabs>=1.0.0
+
+# Audio Processing
+pydub>=0.25.1
+
+# YouTube Upload
+google-api-python-client>=2.100.0
+google-auth-oauthlib>=1.2.0
+google-auth-httplib2>=0.2.0
+
+# HTTP & Async
+httpx>=0.27.0
+aiofiles>=23.2.0
+
+# Optional: External LLM (only needed in standalone mode, not when Claude orchestrates)
+# openai>=1.30.0
+# anthropic>=0.25.0

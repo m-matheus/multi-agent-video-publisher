@@ -1,0 +1,66 @@
+name: "YouTube Video Generator Squad"
+code: "youtube-video-generator"
+version: "1.0.0"
+description: "Multi-agent system for generating anime and bedtime story videos for YouTube. Handles the full pipeline from script writing to publishing."
+icon: "🎬"
+
+target_audience: "YouTube viewers interested in anime stories and children's bedtime content (English)"
+platform: "YouTube"
+
+agents:
+  - id: script-scribe
+    name: "Script Scribe"
+    icon: "📝"
+    path: agents/script-scribe.custom.md
+    note: "Claude acts as this agent directly"
+  - id: frame-fetcher
+    name: "Frame Fetcher"
+    icon: "🎞️"
+    path: agents/frame-fetcher.custom.md
+    note: "For anime content - fetches real clips from Sakugabooru"
+  - id: image-illustrator
+    name: "Image Illustrator"
+    icon: "🎨"
+    path: agents/image-illustrator.custom.md
+    note: "For bedtime stories - generates AI images via fal.ai"
+  - id: video-virtuoso
+    name: "Video Virtuoso"
+    icon: "🎬"
+    path: agents/video-virtuoso.custom.md
+    note: "Optional - animates AI images into video clips"
+  - id: vocal-vanguard
+    name: "Vocal Vanguard"
+    icon: "🎙️"
+    path: agents/vocal-vanguard.custom.md
+  - id: composite-conductor
+    name: "Composite Conductor"
+    icon: "🎵"
+    path: agents/composite-conductor.custom.md
+  - id: thumbnail-tactician
+    name: "Thumbnail Tactician"
+    icon: "🖼️"
+    path: agents/thumbnail-tactician.custom.md
+  - id: publish-pioneer
+    name: "Publish Pioneer"
+    icon: "🚀"
+    path: agents/publish-pioneer.custom.md
+
+pipeline:
+  entry: pipeline/pipeline.yaml
+  output: output/
+
+skills:
+  - llm-generation
+  - fal-ai-image
+  - fal-ai-video
+  - elevenlabs-voice
+  - ffmpeg-composition
+  - youtube-api
+
+config:
+  content_types:
+    - anime
+    - bedtime-story
+  default_language: en
+  target_video_duration_seconds: 60
+  output_base: output/
