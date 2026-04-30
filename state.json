@@ -21,67 +21,78 @@
         "step-02-fetch-frames": {
           "started_at": "2026-04-29T13:13:31.200185+00:00",
           "status": "completed",
-          "completed_at": "2026-04-29T14:22:11.471862+00:00",
+          "completed_at": "2026-04-30T03:37:32.730416+00:00",
           "outputs": {
             "frame_paths": [
-              "output\\top-5-most-overpowered-anime-characters-20260429-101057\\frames\\scene_01_01.mp4",
-              "output\\top-5-most-overpowered-anime-characters-20260429-101057\\frames\\scene_02_01.mp4",
-              "output\\top-5-most-overpowered-anime-characters-20260429-101057\\frames\\scene_03_01.mp4",
-              "output\\top-5-most-overpowered-anime-characters-20260429-101057\\frames\\scene_04_01.mp4",
-              "output\\top-5-most-overpowered-anime-characters-20260429-101057\\frames\\scene_05_01.mp4",
-              "output\\top-5-most-overpowered-anime-characters-20260429-101057\\frames\\scene_06_01.mp4",
-              "output\\top-5-most-overpowered-anime-characters-20260429-101057\\frames\\scene_07_01.mp4",
-              "output\\top-5-most-overpowered-anime-characters-20260429-101057\\frames\\scene_08_01.mp4",
-              "output\\top-5-most-overpowered-anime-characters-20260429-101057\\frames\\scene_09_01.mp4",
-              "output\\top-5-most-overpowered-anime-characters-20260429-101057\\frames\\scene_10_01.mp4",
-              "output\\top-5-most-overpowered-anime-characters-20260429-101057\\frames\\scene_11_01.mp4",
-              "output\\top-5-most-overpowered-anime-characters-20260429-101057\\frames\\scene_12_01.mp4"
+              "output\\top-5-most-powerful-20260429\\frames\\scene_01_01.mp4",
+              "output\\top-5-most-powerful-20260429\\frames\\scene_02_01.mp4",
+              "output\\top-5-most-powerful-20260429\\frames\\scene_03_01.mp4",
+              "output\\top-5-most-powerful-20260429\\frames\\scene_04_01.mp4",
+              "output\\top-5-most-powerful-20260429\\frames\\scene_05_01.mp4",
+              "output\\top-5-most-powerful-20260429\\frames\\scene_06_01.mp4",
+              "output\\top-5-most-powerful-20260429\\frames\\scene_07_01.mp4",
+              "output\\top-5-most-powerful-20260429\\frames\\scene_08_01.mp4",
+              "output\\top-5-most-powerful-20260429\\frames\\scene_09_01.mp4",
+              "output\\top-5-most-powerful-20260429\\frames\\scene_10_01.mp4",
+              "output\\top-5-most-powerful-20260429\\frames\\scene_11_01.mp4",
+              "output\\top-5-most-powerful-20260429\\frames\\scene_12_01.mp4",
+              "output\\top-5-most-powerful-20260429\\frames\\scene_13_01.mp4",
+              "output\\top-5-most-powerful-20260429\\frames\\scene_14_01.mp4",
+              "output\\top-5-most-powerful-20260429\\frames\\scene_15_01.mp4"
             ],
-            "total_clips": 12
+            "total_clips": 15
           }
         },
         "step-04-voice-narration": {
           "started_at": "2026-04-29T13:13:32.658429+00:00",
           "status": "completed",
-          "completed_at": "2026-04-29T17:34:02.486955+00:00",
+          "completed_at": "2026-04-30T13:59:50.392353+00:00",
           "outputs": {
-            "narration_path": "output\\top-5-most-powerful-20260429\\audio\\narration_full.mp3",
+            "narration_path": "output\\5-animes-2026-20260430-101447\\audio\\narration_full.mp3",
             "segment_durations": [
-              14.680816326530612,
-              15.568979591836735,
-              6.530612244897959,
-              20.19265306122449,
-              37.14612244897959,
-              20.427755102040816,
-              27.951020408163266,
-              15.07265306122449,
-              53.629387755102044,
-              55.95428571428572,
-              4.597551020408163,
-              62.74612244897959,
-              21.707755102040817,
-              22.282448979591837,
-              29.962448979591837
+              5.328979591836735,
+              7.471020408163265,
+              1.9591836734693877,
+              15.307755102040817,
+              8.82938775510204,
+              0.9926530612244898,
+              12.591020408163265,
+              9.482448979591837,
+              1.1493877551020408,
+              14.759183673469387,
+              8.986122448979591,
+              1.1493877551020408,
+              15.151020408163266,
+              8.907755102040817,
+              1.4106122448979592,
+              13.08734693877551,
+              8.51591836734694,
+              11.96408163265306
             ],
-            "total_duration": 413.20489795918365
+            "total_duration": 152.81632653061226
           }
         },
         "step-06-thumbnail-creation": {
           "started_at": "2026-04-29T13:13:34.704113+00:00",
           "status": "completed",
-          "completed_at": "2026-04-29T20:36:35.073234+00:00",
+          "completed_at": "2026-04-30T14:18:54.414657+00:00",
           "outputs": {
-            "thumbnail_path": "output\\top-5-most-powerful-20260429\\thumbnail\\thumbnail.png"
+            "thumbnail_path": "output\\5-animes-2026-20260430-101447\\thumbnail\\thumbnail.png",
+            "hook": [
+              "MUST WATCH",
+              "NOW",
+              "RANKED"
+            ]
           }
         },
         "step-05-video-composition": {
           "started_at": "2026-04-29T13:25:53.641223+00:00",
           "status": "completed",
-          "completed_at": "2026-04-29T23:09:12.240321+00:00",
+          "completed_at": "2026-04-30T16:28:36.137206+00:00",
           "outputs": {
-            "video_path": "output\\top-5-most-powerful-20260429\\final\\final_video.mp4",
-            "duration": 412.65,
-            "size_mb": 300.54
+            "video_path": "output\\5-animes-2026-20260430-101447\\final\\final_video.mp4",
+            "duration": 192.17,
+            "size_mb": 109.8
           }
         },
         "step-02-image-generation": {
@@ -115,7 +126,7 @@
         "step-04b-subtitles": {
           "started_at": "2026-04-29T18:22:35.439122+00:00",
           "status": "completed",
-          "completed_at": "2026-04-29T18:22:35.470168+00:00",
+          "completed_at": "2026-04-30T03:51:13.754602+00:00",
           "outputs": {
             "srt_path": "output\\top-5-most-powerful-20260429\\audio\\subtitles.srt"
           }
@@ -123,9 +134,42 @@
         "step-bgm-fetch": {
           "started_at": "2026-04-29T22:42:57.906279+00:00",
           "status": "completed",
-          "completed_at": "2026-04-29T22:50:56.057055+00:00",
+          "completed_at": "2026-04-30T15:46:23.097164+00:00",
           "outputs": {
-            "bgm_path": "output\\top-5-most-powerful-20260429\\audio\\bgm.mp3"
+            "bgm_path": "output\\5-animes-2026-20260430-101447\\audio\\bgm.mp3"
+          }
+        },
+        "fetch-amv": {
+          "started_at": "2026-04-30T00:25:21.441929+00:00",
+          "status": "completed",
+          "outputs": {
+            "amv_path": "output\\5-animes-2026-20260430-101447\\amv3\\amv\\amv_source.mp4",
+            "title": "Welcome To Paradise - Hell's Paradise -「AMV」- Anime MV",
+            "duration_seconds": 234
+          },
+          "completed_at": "2026-04-30T15:45:08.577907+00:00"
+        },
+        "analyze-amv": {
+          "started_at": "2026-04-30T00:39:38.931132+00:00",
+          "status": "completed",
+          "outputs": {
+            "analysis_path": "output\\5-animes-2026-20260430-101447\\amv3\\amv\\amv_analysis.json",
+            "scene_count": 10,
+            "total_duration_seconds": 233.82
+          },
+          "completed_at": "2026-04-30T15:51:46.285756+00:00"
+        },
+        "step-07-youtube-publishing": {
+          "started_at": "2026-04-30T16:13:31.568495+00:00",
+          "status": "completed",
+          "completed_at": "2026-04-30T16:54:48.585346+00:00",
+          "outputs": {
+            "video_id": "x7wfnZO7UNE",
+            "url": "https://www.youtube.com/watch?v=x7wfnZO7UNE",
+            "studio_url": "https://studio.youtube.com/video/x7wfnZO7UNE/edit",
+            "privacy": "private",
+            "channel_id": "UCyRJuLu9xr7mrRh-j52RQ9Q",
+            "title": "5 Anime You NEED to Watch in 2026 (Part 1)"
           }
         }
       }

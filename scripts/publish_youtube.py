@@ -41,6 +41,7 @@ def authenticate(config: dict):
     scopes = [
         "https://www.googleapis.com/auth/youtube.upload",
         "https://www.googleapis.com/auth/youtube",
+        "https://www.googleapis.com/auth/youtube.force-ssl",
     ]
 
     creds = None
@@ -149,8 +150,10 @@ def upload_video(youtube, video_path: Path, metadata: dict) -> str:
 def set_thumbnail(youtube, video_id: str, thumbnail_path: Path) -> bool:
     from googleapiclient.http import MediaFileUpload
 
+    ext = thumbnail_path.suffix.lower()
+    mimetype = "image/jpeg" if ext in (".jpg", ".jpeg") else "image/png"
     try:
-        media = MediaFileUpload(str(thumbnail_path), mimetype="image/png")
+        media = MediaFileUpload(str(thumbnail_path), mimetype=mimetype)
         youtube.thumbnails().set(videoId=video_id, media_body=media).execute()
         return True
     except Exception as e:

@@ -1,126 +1,145 @@
 """
-Scene image generation via fal.ai. Generates one image per scene.
+Scene image generation via DALL-E 3. Generates one image per scene.
+
+Images are saved to {output_dir}/frames/ so compose_video.py picks them up directly.
 
 Usage:
-    python scripts/generate_images.py --script-path output/run-001/script/script.json --output-dir output/run-001
+    python scripts/generate_images.py \
+        --script-path output/run-001/script/script.json \
+        --output-dir output/run-001
+
+    # HD quality (better results, $0.08/image vs $0.04):
+    python scripts/generate_images.py ... --quality hd
 """
 import argparse
-import asyncio
 import json
-import os
 import sys
 import time
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+
+from openai import OpenAI
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from scripts.utils.config import load_config
-from scripts.utils.file_helpers import ensure_dir, download_file
+from scripts.utils.file_helpers import ensure_dir
 from scripts.utils.state_manager import StateManager
 
 STYLE_MODIFIERS = {
-    "anime": "anime style, vibrant colors, detailed illustration, studio quality, cinematic lighting, 16:9 aspect ratio, high detail",
-    "bedtime-story": "children's storybook illustration, soft watercolor, warm lighting, gentle colors, dreamy atmosphere, 16:9 aspect ratio, cozy",
+    "anime": (
+        "anime cinematic art, dramatic studio lighting, ultra-detailed, "
+        "vibrant saturated colors, MAPPA-style quality, epic atmosphere, "
+        "16:9 widescreen composition"
+    ),
+    "bedtime-story": (
+        "children's storybook illustration, soft watercolor style, "
+        "warm golden lighting, dreamy cozy atmosphere, gentle pastel colors, "
+        "cute characters, magical mood, 16:9 widescreen"
+    ),
 }
-
-NEGATIVE_PROMPT = "blurry, low quality, distorted, watermark, text, logo, signature, ugly, deformed, extra limbs"
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Generate scene images via fal.ai")
+    parser = argparse.ArgumentParser(description="Generate scene images via DALL-E 3")
     parser.add_argument("--script-path", required=True, help="Path to script.json")
     parser.add_argument("--output-dir", required=True, help="Output directory for this run")
-    parser.add_argument("--model", default=None, help="Override image model")
-    parser.add_argument("--max-parallel", type=int, default=5, help="Max parallel requests")
+    parser.add_argument("--quality", default="standard", choices=["standard", "hd"],
+                        help="DALL-E 3 quality: standard=$0.04/image, hd=$0.08/image")
+    parser.add_argument("--max-parallel", type=int, default=3,
+                        help="Max parallel requests (DALL-E 3 rate limit ~5 rpm)")
     return parser.parse_args()
 
 
-def build_image_prompt(visual_prompt: str, content_type: str) -> str:
-    modifier = STYLE_MODIFIERS.get(content_type, STYLE_MODIFIERS["anime"])
-    return f"{visual_prompt}, {modifier}"
+def build_prompt(visual_prompt: str, content_type: str) -> str:
+    style = STYLE_MODIFIERS.get(content_type, STYLE_MODIFIERS["anime"])
+    return f"{visual_prompt}. {style}. No text, no watermarks, no logos, no subtitles."
 
 
-async def generate_single_image(prompt: str, negative_prompt: str, model: str, semaphore: asyncio.Semaphore) -> str:
-    import fal_client
-
-    async with semaphore:
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                result = await fal_client.run_async(
-                    model,
-                    arguments={
-                        "prompt": prompt,
-                        "negative_prompt": negative_prompt,
-                        "image_size": {"width": 1344, "height": 768},
-                        "num_images": 1,
-                    },
-                )
-                return result["images"][0]["url"]
-            except Exception as e:
-                if attempt < max_retries - 1:
-                    wait_time = 2 ** attempt
-                    print(f"  Retry {attempt + 1} after {wait_time}s: {e}")
-                    await asyncio.sleep(wait_time)
-                else:
-                    raise
-
-
-async def generate_all_images(scenes: list[dict], content_type: str, model: str, max_parallel: int) -> list[str]:
-    semaphore = asyncio.Semaphore(max_parallel)
-    tasks = []
-    for scene in scenes:
-        prompt = build_image_prompt(scene["visual_prompt"], content_type)
-        task = generate_single_image(prompt, NEGATIVE_PROMPT, model, semaphore)
-        tasks.append(task)
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-    urls = []
-    for i, result in enumerate(results):
-        if isinstance(result, Exception):
-            print(f"  ERROR generating image for scene {i+1}: {result}")
-            urls.append(None)
-        else:
-            urls.append(result)
-    return urls
+def generate_one(
+    scene_idx: int,
+    prompt: str,
+    quality: str,
+    client: OpenAI,
+    images_dir: Path,
+) -> tuple[int, Path | None]:
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = client.images.generate(
+                model="dall-e-3",
+                prompt=prompt[:4000],
+                size="1792x1024",
+                quality=quality,
+                n=1,
+            )
+            url = response.data[0].url
+            dest = images_dir / f"scene_{scene_idx:02d}.jpg"
+            urllib.request.urlretrieve(url, str(dest))
+            return scene_idx, dest
+        except Exception as e:
+            if attempt < max_retries - 1:
+                wait = 2 ** attempt
+                print(f"  Scene {scene_idx}: retry {attempt + 1} after {wait}s ({e})")
+                time.sleep(wait)
+            else:
+                print(f"  Scene {scene_idx}: FAILED — {e}")
+                return scene_idx, None
 
 
 def main():
     args = parse_args()
     config = load_config()
-    os.environ["FAL_KEY"] = config["fal_key"]
 
-    script_path = Path(args.script_path)
-    script = json.loads(script_path.read_text(encoding="utf-8"))
+    api_key = config.get("openai_api_key")
+    if not api_key:
+        print("ERROR: OPENAI_API_KEY not set in .env")
+        sys.exit(1)
+
+    script = json.loads(Path(args.script_path).read_text(encoding="utf-8"))
     output_dir = Path(args.output_dir)
-    images_dir = ensure_dir(output_dir / "images")
+    images_dir = ensure_dir(output_dir / "frames")
 
-    model = args.model or config["default_image_model"]
     content_type = script.get("content_type", "anime")
-    scenes = script["scenes"]
+    # Skip rank_transition scenes — they're generated by compose_video.py
+    scenes = [s for s in script["scenes"] if s.get("scene_type") != "rank_transition"]
 
     state = StateManager()
     state.update_step("step-02-image-generation", "running")
 
-    print(f"Generating {len(scenes)} scene images using {model}...")
+    cost_per = "$0.04" if args.quality == "standard" else "$0.08"
+    print(f"Generating {len(scenes)} scene images via DALL-E 3 ({args.quality}, ~{cost_per}/image)...")
     start_time = time.time()
 
-    image_urls = asyncio.run(generate_all_images(scenes, content_type, model, args.max_parallel))
+    client = OpenAI(api_key=api_key)
+    results: dict[int, Path | None] = {}
 
-    image_paths = []
-    for i, url in enumerate(image_urls):
-        if url:
-            dest = images_dir / f"scene_{i+1:02d}.png"
-            download_file(url, dest)
-            image_paths.append(str(dest))
-            print(f"  Scene {i+1}: saved to {dest.name}")
-        else:
-            image_paths.append(None)
-            print(f"  Scene {i+1}: FAILED")
+    with ThreadPoolExecutor(max_workers=args.max_parallel) as executor:
+        futures = {
+            executor.submit(
+                generate_one,
+                i + 1,
+                build_prompt(scene["visual_prompt"], content_type),
+                args.quality,
+                client,
+                images_dir,
+            ): i
+            for i, scene in enumerate(scenes)
+        }
+        for future in as_completed(futures):
+            idx, path = future.result()
+            results[idx] = path
+            print(f"  Scene {idx}: {path.name if path else 'FAILED'}")
 
+    ordered = [results.get(i + 1) for i in range(len(scenes))]
     elapsed = time.time() - start_time
-    successful = sum(1 for p in image_paths if p)
+    successful = sum(1 for p in ordered if p)
     print(f"\nCompleted: {successful}/{len(scenes)} images in {elapsed:.1f}s")
 
-    state.update_step("step-02-image-generation", "completed", {"image_paths": image_paths})
+    state.update_step(
+        "step-02-image-generation", "completed",
+        {"image_paths": [str(p) if p else None for p in ordered]},
+    )
 
 
 if __name__ == "__main__":

@@ -145,23 +145,73 @@ def make_cta_filter(font_path: str, start: float, duration: float) -> str:
     )
 
 
+def create_rank_transition_clip(scene: dict, output_path: Path, font_path: str | None) -> Path:
+    """Generate an animated rank reveal: black background with anime name + '#N' in gold."""
+    duration = scene.get("duration_seconds", 2.5)
+    rank = scene.get("rank", "?")
+    anime_name = scene.get("name", "")
+    fade_out_start = max(0.0, duration - 0.3)
+
+    vf_parts = []
+    if font_path:
+        esc_font = font_path.replace(":", "\\:")
+        # Anime name at top (white, smaller)
+        if anime_name:
+            safe_name = anime_name.replace("'", "").replace(":", " ")
+            vf_parts.append(
+                f"drawtext=fontfile='{esc_font}':text='{safe_name}'"
+                f":fontcolor=white@0.9:fontsize=72"
+                f":x=(w-text_w)/2:y=(h/2-260)"
+                f":shadowx=4:shadowy=4:shadowcolor=black@0.9"
+            )
+        # Rank number in gold (large, center)
+        vf_parts.append(
+            f"drawtext=fontfile='{esc_font}':text='#{rank}'"
+            f":fontcolor=#FFD700:fontsize=280"
+            f":x=(w-text_w)/2:y=(h/2-140)"
+            f":shadowx=8:shadowy=8:shadowcolor=black@0.8"
+        )
+    vf_parts.append("fade=t=in:st=0:d=0.2")
+    vf_parts.append(f"fade=t=out:st={fade_out_start:.2f}:d=0.3")
+
+    cmd = [
+        _ffmpeg(), "-y",
+        "-f", "lavfi", "-i", f"color=c=black:s=1920x1080:d={duration}:r=24",
+        "-vf", ",".join(vf_parts),
+        "-t", str(duration),
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "fast",
+        str(output_path),
+    ]
+    subprocess.run(cmd, capture_output=True, check=True)
+    return output_path
+
+
 def get_scene_overlay(scene: dict, scene_idx: int, total_scenes: int, title: str) -> dict | None:
     """Determine what text overlay to apply based on scene position and narration."""
     import re
+
+    # Transition clips already display the rank visually — no badge needed
+    if scene.get("scene_type") == "rank_transition":
+        return None
+
     narration = scene.get("narration_text", "")
 
     if scene_idx == total_scenes - 1:
         return {"style": "cta", "start": 4.0, "duration": 8.0}
 
-    # re.search (not match) so it finds "number" mid-sentence (e.g. "Starting at number five: Saitama")
+    # re.search (not match) so it finds "number" mid-sentence
+    # Require name to start with uppercase to avoid "number four, unchallenged..." false matches
     m = re.search(
-        r"[Nn]umber (\w+)\s*[—\-,:]\s*([^,\n]+)",
+        r"[Nn]umber (\w+)\s*[—\-,:]\s*([A-Z][^,\n]+)",
         narration,
     )
     if m:
         word = m.group(1).lower()
         rank = _WORD_TO_NUM.get(word, word)
-        words = m.group(2).strip().split()[:4]
+        raw = m.group(2).strip()
+        # Split on ". " only when NOT preceded by a single uppercase letter (preserves "Monkey D. Luffy")
+        clean = re.split(r"(?<![A-Z])\.\s+", raw)[0]
+        words = clean.split()[:4]
         name = " ".join(words).rstrip(".,!").upper()
         return {"style": "rank", "rank": rank, "name": name, "start": 1.0, "duration": 5.5}
 
@@ -177,6 +227,12 @@ def parse_args():
     parser.add_argument("--bgm-path", default=None, help="Optional background music path")
     parser.add_argument("--bgm-volume", type=float, default=0.15, help="BGM volume (0-1)")
     parser.add_argument("--srt-path", default=None, help="Optional SRT subtitle file to embed as a soft track")
+    parser.add_argument("--zoom-crop", action="store_true",
+                        help="Apply 7%% zoom + center crop on video clips to remove edge watermarks")
+    parser.add_argument("--amv-base-dir", default=None,
+                        help="Base directory containing amv1/, amv2/, ... subdirs. "
+                             "When set, scenes with an 'amv' field pull clips from amvN/frames/ "
+                             "instead of the global --frames-dir.")
     # Legacy support for AI-generated video clips
     parser.add_argument("--videos-dir", default=None, help="Path to AI-generated video clips (legacy mode)")
     return parser.parse_args()
@@ -245,17 +301,32 @@ def get_media_info(file_path: Path) -> dict:
 
 
 def create_scene_clip(
-    input_path: Path,
+    input_path: Path | None,
     output_path: Path,
     target_duration: float,
     effect: str = "kenburns",
     text_overlay: dict | None = None,
+    scene_type: str = "normal",
+    scene: dict | None = None,
+    zoom_crop: bool = False,
 ) -> Path:
     """
     Create a scene clip from input media with effects applied.
     Handles: video clips (trim/loop), static images (ken burns), gifs (loop).
+    For rank_transition scenes, generates an animated rank reveal (no input_path needed).
+    Intro scenes use a more aggressive Ken Burns zoom.
     Optionally burns in a text overlay (title card, character name, CTA).
     """
+    font_path = find_system_font()
+
+    # Rank transition: generated clip — no source media required
+    if scene_type == "rank_transition":
+        return create_rank_transition_clip(scene or {}, output_path, font_path)
+
+    # Intro scenes get a faster, more dramatic Ken Burns zoom
+    zoom_speed = 0.002 if scene_type == "intro" else 0.0008
+    zoom_max = 1.5 if scene_type == "intro" else 1.2
+
     ext = input_path.suffix.lower()
     is_image = ext in (".png", ".jpg", ".jpeg", ".bmp")
     is_gif = ext == ".gif"
@@ -288,7 +359,7 @@ def create_scene_clip(
 
     if is_image:
         vf = (
-            f"zoompan=z='min(zoom+0.0008,1.2)':d={int(target_duration*24)}"
+            f"zoompan=z='min(zoom+{zoom_speed},{zoom_max})':d={int(target_duration*24)}"
             f":x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1920x1080,fps=24{drawtext}"
         )
         cmd = [
@@ -300,7 +371,11 @@ def create_scene_clip(
             str(output_path),
         ]
     elif is_gif or ext == ".webm":
-        vf = f"scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,fps=24{drawtext}"
+        if zoom_crop:
+            # Scale 12% larger, then crop from top-left to remove bottom-right watermark
+            vf = f"scale=2150:1210:force_original_aspect_ratio=increase,crop=1920:1080:0:0,fps=24{drawtext}"
+        else:
+            vf = f"scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,fps=24{drawtext}"
         cmd = [
             _ffmpeg(), "-y",
             "-stream_loop", "-1", "-i", str(input_path),
@@ -317,7 +392,11 @@ def create_scene_clip(
         except Exception:
             clip_duration = target_duration
 
-        vf = f"scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,fps=24{drawtext}"
+        if zoom_crop:
+            # Scale 12% larger, then crop from top-left to remove bottom-right watermark
+            vf = f"scale=2150:1210:force_original_aspect_ratio=increase,crop=1920:1080:0:0,fps=24{drawtext}"
+        else:
+            vf = f"scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,fps=24{drawtext}"
 
         if clip_duration >= target_duration:
             cmd = [
@@ -341,6 +420,53 @@ def create_scene_clip(
             ]
 
     subprocess.run(cmd, capture_output=True, check=True)
+    return output_path
+
+
+def build_synced_narration(segments_dir: Path, scenes: list[dict], output_path: Path) -> Path:
+    """
+    Rebuild narration audio so each segment is padded with silence to its scene's
+    duration_seconds. This locks each narration onset to the corresponding video cut.
+    """
+    tmp_dir = output_path.parent / "_narr_tmp"
+    tmp_dir.mkdir(exist_ok=True)
+
+    padded_files = []
+    for i, scene in enumerate(scenes):
+        seg_path = segments_dir / f"segment_{i+1:02d}.mp3"
+        vid_dur = float(scene["duration_seconds"])
+        padded_path = tmp_dir / f"padded_{i+1:02d}.mp3"
+
+        if seg_path.exists():
+            cmd = [
+                _ffmpeg(), "-y", "-i", str(seg_path),
+                "-af", f"apad=whole_dur={vid_dur},atrim=end={vid_dur},aresample=24000",
+                "-c:a", "libmp3lame", "-ar", "24000", "-ac", "1", "-q:a", "4",
+                str(padded_path),
+            ]
+        else:
+            cmd = [
+                _ffmpeg(), "-y",
+                "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono",
+                "-t", str(vid_dur),
+                "-c:a", "libmp3lame", "-ar", "24000", "-ac", "1", "-q:a", "4",
+                str(padded_path),
+            ]
+        subprocess.run(cmd, capture_output=True, check=True)
+        padded_files.append(padded_path)
+
+    concat_list = tmp_dir / "concat.txt"
+    concat_list.write_text(
+        "\n".join(f"file '{str(f.absolute())}'" for f in padded_files) + "\n",
+        encoding="utf-8",
+    )
+    subprocess.run(
+        [_ffmpeg(), "-y", "-f", "concat", "-safe", "0",
+         "-i", str(concat_list), "-c:a", "copy", str(output_path)],
+        capture_output=True, check=True,
+    )
+    import shutil as _sh
+    _sh.rmtree(tmp_dir, ignore_errors=True)
     return output_path
 
 
@@ -445,6 +571,15 @@ def main():
 
     audio_path = Path(args.audio_dir) / "narration_full.mp3"
 
+    # If per-scene segments exist, rebuild a synced narration track so each
+    # scene's narration is locked to its video cut (padded with silence to duration).
+    segments_dir = Path(args.audio_dir) / "narration_segments"
+    if segments_dir.exists() and any(segments_dir.iterdir()):
+        synced_path = Path(args.audio_dir) / "narration_synced.mp3"
+        print("Building synced narration from per-scene segments...")
+        audio_path = build_synced_narration(segments_dir, script["scenes"], synced_path)
+        print(f"  Synced narration: {synced_path.name}")
+
     if not source_dir.exists():
         print(f"ERROR: Source directory not found: {source_dir}")
         sys.exit(1)
@@ -453,12 +588,27 @@ def main():
         sys.exit(1)
 
     source_files = find_scene_files(source_dir)
-    if not source_files:
+    scenes = script["scenes"]
+    transitions = [scene.get("transition", "cut") for scene in scenes]
+    non_transition_count = sum(1 for s in scenes if s.get("scene_type") != "rank_transition")
+    if not source_files and non_transition_count > 0:
         print(f"ERROR: No media files found in {source_dir}")
         sys.exit(1)
 
-    scenes = script["scenes"]
-    transitions = [scene.get("transition", "cut") for scene in scenes]
+    # Per-AMV clip routing: if --amv-base-dir is set, load clip lists per amv number
+    amv_files: dict[int, list[Path]] = {}
+    amv_idx: dict[int, int] = {}
+    if args.amv_base_dir:
+        amv_base = Path(args.amv_base_dir)
+        for n in range(1, 20):
+            amv_frames = amv_base / f"amv{n}" / "frames"
+            if amv_frames.exists():
+                clips = find_scene_files(amv_frames)
+                if clips:
+                    amv_files[n] = clips
+                    amv_idx[n] = 0
+        if amv_files:
+            print(f"Per-AMV routing enabled: " + ", ".join(f"amv{n}={len(v)} clips" for n, v in sorted(amv_files.items())))
 
     state = StateManager()
     state.update_step("step-05-video-composition", "running")
@@ -473,14 +623,25 @@ def main():
     if not font_available:
         print("  WARNING: No system font found — text overlays disabled")
 
+    file_idx = 0
     for i, scene in enumerate(scenes):
         target_duration = scene.get("duration_seconds", 5)
+        scene_type = scene.get("scene_type", "normal")
+        amv_num = scene.get("amv")
 
-        if i < len(source_files):
-            source = source_files[i]
+        if scene_type == "rank_transition":
+            source = None
+        elif amv_num and amv_num in amv_files:
+            # Per-AMV routing: pull next clip from this AMV's frame pool
+            clips = amv_files[amv_num]
+            idx = amv_idx[amv_num]
+            source = clips[min(idx, len(clips) - 1)]
+            amv_idx[amv_num] += 1
+        elif source_files:
+            source = source_files[min(file_idx, len(source_files) - 1)]
+            file_idx += 1
         else:
-            # Reuse last available clip if not enough
-            source = source_files[-1]
+            source = None
 
         clip_path = temp_dir / f"processed_{i+1:02d}.mp4"
         overlay = get_scene_overlay(scene, i, total_scenes, title) if font_available else None
@@ -494,10 +655,19 @@ def main():
                 overlay_label = f" [{overlay.get('text', '')}]"
         else:
             overlay_label = ""
-        print(f"  Processing scene {i+1}: {source.name} -> {target_duration}s{overlay_label}")
+
+        if scene_type == "rank_transition":
+            source_name = f"[RANK TRANSITION #{scene.get('rank', '?')}]"
+        else:
+            source_name = source.name if source else "[none]"
+        print(f"  Processing scene {i+1}: {source_name} -> {target_duration}s{overlay_label}")
 
         try:
-            create_scene_clip(source, clip_path, target_duration, text_overlay=overlay)
+            create_scene_clip(
+                source, clip_path, target_duration,
+                text_overlay=overlay, scene_type=scene_type, scene=scene,
+                zoom_crop=args.zoom_crop,
+            )
             scene_clips.append(clip_path)
         except subprocess.CalledProcessError as e:
             print(f"  ERROR processing scene {i+1}: {e}")

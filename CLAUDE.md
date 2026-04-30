@@ -7,7 +7,9 @@ You (Claude) are the **orchestrator** of this multi-agent pipeline. You generate
 
 When the user asks to generate a video (e.g., "create a video about...", "generate a video on..."), follow this pipeline:
 
-If the user provides a **YouTube AMV URL**, use the **AMV Workflow** below instead of the standard pipeline.
+For **anime content**, the **AMV Workflow** is the default. Ask the user for a YouTube AMV URL unless they explicitly want to use Sakugabooru clips instead.
+
+If the user provides a **YouTube AMV URL** (or for anime by default), use the **AMV Workflow** below instead of the standard pipeline.
 
 ### Step 1: Script Generation (YOU do this directly)
 1. Ask the user for the **topic** and **content type** (anime, bedtime-story, or amv) if not provided
@@ -42,9 +44,24 @@ python scripts/fetch_frames.py --source local --local-dir "/path/to/frames" --ou
 python scripts/generate_voice.py --script-path "{output_dir}/script/script.json" --output-dir "{output_dir}"
 ```
 
-### Step 5: Compose Final Video
+### Step 5: Fetch BGM (YOU choose the query)
+Based on the video topic and content type, choose a search query and run:
 ```bash
-python scripts/compose_video.py --script-path "{output_dir}/script/script.json" --frames-dir "{output_dir}/frames" --audio-dir "{output_dir}/audio" --output-dir "{output_dir}"
+python scripts/fetch_bgm.py --query "{bgm_query}" --output-dir "{output_dir}"
+```
+
+**BGM query selection guidelines:**
+- Anime action/fighting → `"epic anime orchestra action royalty free"`
+- Anime emotional/dramatic → `"emotional anime piano orchestral royalty free"`
+- Dragon Ball / power ranking → `"epic dragon ball orchestra royalty free"`
+- Naruto → `"naruto epic orchestral royalty free"`
+- Demon Slayer → `"demon slayer kimetsu orchestral royalty free"`
+- Bedtime story → `"gentle lullaby soft piano children royalty free"`
+- General anime → `"epic anime cinematic orchestra royalty free"`
+
+### Step 6: Compose Final Video
+```bash
+python scripts/compose_video.py --script-path "{output_dir}/script/script.json" --frames-dir "{output_dir}/frames" --audio-dir "{output_dir}/audio" --output-dir "{output_dir}" --bgm-path "{output_dir}/audio/bgm.mp3" --bgm-volume 0.20
 ```
 
 The compositor handles:
@@ -64,7 +81,7 @@ python scripts/generate_thumbnail.py --script-path "{output_dir}/script/script.j
 
 ### Step 8: Publish to YouTube
 ```bash
-python scripts/publish_youtube.py --script-path "{output_dir}/script/script.json" --video-path "{output_dir}/final/final_video.mp4" --thumbnail-path "{output_dir}/thumbnail/thumbnail.png" --privacy "private"
+python scripts/publish_youtube.py --script-path "{output_dir}/script/script.json" --video-path "{output_dir}/final/final_video.mp4" --thumbnail-path "{output_dir}/thumbnail/thumbnail.jpg" --privacy "private" --channel-id "UCyRJuLu9xr7mrRh-j52RQ9Q"
 ```
 
 ---
@@ -119,25 +136,59 @@ Write to `{output_dir}/script/script.json` and show the script summary.
 python scripts/generate_voice.py --script-path "{output_dir}/script/script.json" --output-dir "{output_dir}"
 ```
 
-### AMV Step 7: Compose Final Video
+### AMV Step 7: Fetch BGM (YOU choose the query)
+Based on the video topic and AMV mood, choose a search query and run:
 ```bash
-python scripts/compose_video.py --script-path "{output_dir}/script/script.json" --frames-dir "{output_dir}/frames" --audio-dir "{output_dir}/audio" --output-dir "{output_dir}"
+python scripts/fetch_bgm.py --query "{bgm_query}" --output-dir "{output_dir}"
 ```
-The compositor automatically uses the pre-split AMV segments from `frames/`.
+Use the same BGM query guidelines from the standard workflow above.
 
-### AMV Step 8: Generate Thumbnail
+### AMV Step 8: Compose Final Video
 ```bash
-python scripts/generate_thumbnail.py --script-path "{output_dir}/script/script.json" --output-dir "{output_dir}"
+python scripts/compose_video.py --script-path "{output_dir}/script/script.json" --frames-dir "{output_dir}/frames" --audio-dir "{output_dir}/audio" --output-dir "{output_dir}" --bgm-path "{output_dir}/audio/bgm.mp3" --bgm-volume 0.20 --zoom-crop --amv-base-dir "{output_dir}"
 ```
 
-### AMV Step 9: CHECKPOINT — Approve Video
+**Multi-AMV workflow (per-anime clip routing):**
+- When the video covers multiple anime series (e.g. "Top 5"), download each AMV into its own subdirectory: `{output_dir}/amv1/`, `amv2/`, etc. Analyze each AMV separately so frames land in `amv1/frames/`, `amv2/frames/`, etc.
+- Add an `"amv": N` field to each scene in `script.json` to declare which AMV's clips to use for that scene.
+- Pass `--amv-base-dir "{output_dir}"` to `compose_video.py` — it will automatically route each scene to the correct `amvN/frames/` pool and cycle through that AMV's clips in order.
+- `--zoom-crop` scales clips 12% larger and crops from the top-left corner, removing bottom-right watermarks.
+- The global `--frames-dir` is still required as a fallback for scenes without an `amv` field.
+
+### AMV Step 9: Generate Thumbnail
+```bash
+python scripts/generate_thumbnail.py --script-path "{output_dir}/script/script.json" --output-dir "{output_dir}" --highlight-frame "{output_dir}/amvN/frames/scene_07.mp4"
+```
+Use `--highlight-frame` to select a specific AMV scene that has strong visual impact. Scene 7 at second 5 is a good default — adjust based on the AMV content.
+
+### AMV Step 10: CHECKPOINT — Approve Video
 - Report final video path, duration, file size
 - Wait for user approval before publishing
 
-### AMV Step 10: Publish to YouTube
+### AMV Step 11: Publish to YouTube
 ```bash
-python scripts/publish_youtube.py --script-path "{output_dir}/script/script.json" --video-path "{output_dir}/final/final_video.mp4" --thumbnail-path "{output_dir}/thumbnail/thumbnail.png" --privacy "private"
+python scripts/publish_youtube.py --script-path "{output_dir}/script/script.json" --video-path "{output_dir}/final/final_video.mp4" --thumbnail-path "{output_dir}/thumbnail/thumbnail.jpg" --privacy "private" --channel-id "UCyRJuLu9xr7mrRh-j52RQ9Q"
 ```
+
+### AMV Step 12: Post-Publish Steps
+After the video is uploaded (still private), do all of these before making it public:
+
+1. **Update description with chapters** — add YouTube chapter timestamps so the progress bar shows named segments:
+   ```
+   0:00 Intro
+   0:15 #5 — [Anime Name]
+   0:35 #4 — [Anime Name]
+   ...
+   ```
+   Use the cumulative scene durations from `script.json` to calculate timestamps. Also add hashtags at the end of the description (e.g., `#anime #animerecommendations`).
+
+2. **Update tags** — use the YouTube Data API `videos.update` to push comprehensive tags (series names, year, genre keywords).
+
+3. **Make video public** — call `videos.update` with `status.privacyStatus = "public"`.
+
+4. **Post engagement comment** — use `commentThreads.insert` to post a pinned comment in English asking viewers to engage (e.g., "Which anime from this list is your favorite? Drop it in the comments! 👇"). Then ask the user to go to YouTube Studio and pin it, as the API cannot pin comments directly.
+
+**Note:** OAuth scope `youtube.force-ssl` is required for posting comments. If authentication fails, delete `.youtube_credentials.json` and re-authenticate.
 
 ---
 
@@ -153,6 +204,10 @@ When generating the script, produce this exact JSON structure:
   "scenes": [
     {
       "scene_number": 1,
+      "scene_type": "intro | normal | rank_transition",
+      "rank": 5,
+      "name": "Anime Title",
+      "amv": 1,
       "duration_seconds": 8.0,
       "visual_prompt": "Detailed scene description for image/clip search",
       "narration_text": "Text spoken aloud during this scene",
@@ -162,6 +217,12 @@ When generating the script, produce this exact JSON structure:
   ]
 }
 ```
+
+- `scene_type`: `"intro"` (opening scene), `"normal"` (default), `"rank_transition"` (animated rank reveal)
+- `rank`: integer, used on `rank_transition` scenes and on character scenes to indicate which rank is being narrated
+- `name`: **required on `rank_transition` scenes** — the anime title to display on the rank card (e.g., `"Jujutsu Kaisen"`). The compositor renders it above the gold rank number.
+- `amv`: integer (1–N), used in multi-AMV videos to route this scene's clips to the correct `amvN/frames/` pool
+- All fields except `scene_number`, `duration_seconds`, `narration_text` are optional
 
 ### The `search_tags` field
 When content_type is "anime", include Sakugabooru-compatible tags for each scene.
@@ -191,6 +252,32 @@ When content_type is "amv", **omit `search_tags`** — frames are already extrac
 - Visual prompts should describe the ACTION and MOOD (for clip search)
 - Include `search_tags` with Sakugabooru-compatible tags per scene
 - Think about pacing: action scenes = shorter clips, emotional = longer holds
+
+#### Ranking videos (Top N) — required structure
+When the topic is a ranking (Top 5, Top 10, etc.), always generate scenes in this order:
+
+```
+Scene 1:    scene_type="intro",           ~7s,  broad tags ("effects animated fighting"), amv=<varied>
+Scene 2:    scene_type="normal",          ~5s,  hook narration introducing the list, broad tags, amv=<varied>
+
+For each rank from N down to 1:
+  Scene X:    scene_type="rank_transition", ~2.5s, rank=N, name="<Anime Title>"
+  Scene X+1:  scene_type="normal",          ~8s,   rank=N, series-specific tags, amv=N, character intro
+  Scene X+2:  scene_type="normal",          ~7s,   rank=N, series-specific tags, amv=N, why they rank here
+
+Last scene: scene_type="normal", ~14s, outro narration (CTA overlay auto-added by compositor), amv=<any>
+```
+
+**Multi-AMV intro/hook**: For intro and hook scenes, assign `amv` values that span multiple different series (e.g., `amv=4` for intro, `amv=2` for scene 2) to give visual variety before the ranking begins. Avoid using `amv=1` for both.
+
+**Last scene duration**: Set the last scene's `duration_seconds` to at least the TTS narration length + 2s buffer. A safe default is 14s.
+
+**`name` field on rank transitions**: Always include `"name": "<Anime Title>"` on every `rank_transition` scene. The compositor renders the anime title above the gold rank number on the black card.
+
+**Per-rank `search_tags` rule**: Every normal scene narrating a character MUST use that character's series-specific tags. All scenes within the same rank must share the same series tags. Examples:
+- Rank about Alucard (Hellsing) → `hellsing animated` for all scenes in that rank
+- Rank about Saitama (One Punch Man) → `one-punch_man effects` for all scenes in that rank
+- Rank about Goku (Dragon Ball) → `dragon_ball_super effects` for all scenes in that rank
 
 ### For Bedtime Stories:
 - Gentle, calming narratives suitable for ages 3-8
@@ -224,7 +311,7 @@ When content_type is "amv", **omit `search_tags`** — frames are already extrac
 
 ## Rules
 - Scene durations must sum to target_duration_seconds (±5s)
-- Minimum 5 scenes, maximum 15 scenes
+- Minimum 5 scenes, maximum 20 scenes
 - First scene must hook the viewer
 - Always show the user the script before proceeding
 - Report progress after each step completes

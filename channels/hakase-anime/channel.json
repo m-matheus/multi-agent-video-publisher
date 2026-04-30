@@ -1,0 +1,17 @@
+{
+  "name": "Hakase Anime",
+  "channel_id": "UCyRJuLu9xr7mrRh-j52RQ9Q",
+  "slug": "hakase-anime",
+  "content_type": "anime",
+  "bio_short": "Your anime professor is in. Rankings, recommendations & deep dives — if it hits different, we cover it. New video every week. 博士",
+  "bio_long": "Welcome to Hakase Anime — your guide to the best anime has to offer.\n\nWe break down rankings, hidden gems, must-watch series, and the moments that made anime history. Whether you're new to anime or a seasoned veteran, there's always something worth discovering.\n\n📌 New videos weekly\n🎌 Top lists · Character breakdowns · Season recaps · Lore dives\n\nDrop your favorite anime in the comments — the professor is always taking notes. 博士",
+  "brand": {
+    "character_concept": "Cool anime professor archetype: short dark hair, round glasses with glowing blue lenses, dark high-collar jacket with subtle tech details, confident smirk",
+    "palette": "deep purple #1a0a2e background, gold #FFD700 accents, electric blue #4fc3f7 highlights",
+    "style": "MAPPA-style quality, dramatic cinematic lighting, ultra-detailed"
+  },
+  "dalle_prompts": {
+    "profile": "Anime character portrait, cool professor archetype: short dark hair, round glasses with glowing blue lenses, dark high-collar jacket, confident smirk. Dramatic deep purple and dark blue background with subtle gold and electric blue lighting. MAPPA-style quality, sharp cinematic shading. Centered square composition, character fills the frame. No text, no watermarks, no logos.",
+    "banner": "Wide anime banner collage featuring iconic moments from multiple famous anime series — intense battles, dramatic power-ups, emotional scenes — each framed as glowing panels or portals against a deep dark purple background with gold particles and electric blue energy effects. Ultra-detailed, cinematic composition, 8K quality, 16:9 widescreen. No text, no watermarks, no logos."
+  }
+}

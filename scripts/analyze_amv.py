@@ -18,24 +18,32 @@ from pathlib import Path
 import anthropic
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from scripts.utils.config import load_config
+from scripts.utils.config import load_config, get_ffmpeg_path
 from scripts.utils.file_helpers import ensure_dir
 from scripts.utils.state_manager import StateManager
+
+# Resolve ffmpeg from imageio-ffmpeg if not in PATH (ffprobe not required)
+FFMPEG = get_ffmpeg_path()
 
 
 def get_duration(video_path: str) -> float:
     result = subprocess.run(
-        ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", video_path],
-        capture_output=True, text=True, check=True,
+        [FFMPEG, "-i", video_path],
+        capture_output=True, text=True,
     )
-    return float(json.loads(result.stdout)["format"]["duration"])
+    # ffmpeg prints duration to stderr: "  Duration: HH:MM:SS.ss"
+    match = re.search(r"Duration:\s*(\d+):(\d+):(\d+\.\d+)", result.stderr)
+    if not match:
+        raise ValueError(f"Could not determine duration of {video_path}")
+    h, m, s = match.groups()
+    return int(h) * 3600 + int(m) * 60 + float(s)
 
 
 def detect_scene_cuts(video_path: str, threshold: float = 0.35) -> list[float]:
     """Return sorted list of scene-change timestamps (seconds) using ffmpeg showinfo."""
     result = subprocess.run(
         [
-            "ffmpeg", "-i", video_path,
+            FFMPEG, "-i", video_path,
             "-vf", f"select=gt(scene\\,{threshold}),showinfo",
             "-vsync", "vfr", "-an", "-f", "null", "-",
         ],
@@ -57,13 +65,20 @@ def build_segments(
     """Convert cut points into (start, end) pairs, merging short/excess segments."""
     boundaries = [0.0] + cut_timestamps + [total_duration]
     segments = []
-    for i in range(len(boundaries) - 1):
-        start, end = boundaries[i], boundaries[i + 1]
-        if end - start >= min_duration:
-            segments.append((start, end))
-        elif segments:
-            # Merge tiny segment into the previous one
-            segments[-1] = (segments[-1][0], end)
+    pending_start = 0.0
+
+    for boundary in boundaries[1:]:
+        if boundary - pending_start >= min_duration:
+            segments.append((pending_start, boundary))
+            pending_start = boundary
+
+    # Absorb any remaining tail into the last segment
+    if segments and pending_start < total_duration - 0.01:
+        segments[-1] = (segments[-1][0], total_duration)
+
+    # Fallback: video had no cuts long enough — treat whole video as one segment
+    if not segments:
+        segments = [(0.0, total_duration)]
 
     # Merge shortest neighbours until we reach max_scenes
     while len(segments) > max_scenes:
@@ -76,7 +91,6 @@ def build_segments(
             merged = (segments[-2][0], segments[-1][1])
             segments = segments[:-2] + [merged]
         else:
-            # Merge with shorter neighbour
             left_dur = segments[idx - 1][1] - segments[idx - 1][0]
             right_dur = segments[idx + 1][1] - segments[idx + 1][0]
             if left_dur <= right_dur:
@@ -92,7 +106,7 @@ def build_segments(
 def extract_keyframe(video_path: str, timestamp: float, output_path: str) -> bool:
     result = subprocess.run(
         [
-            "ffmpeg", "-y",
+            FFMPEG, "-y",
             "-ss", str(timestamp),
             "-i", video_path,
             "-frames:v", "1",
@@ -141,7 +155,7 @@ def describe_frame(client: anthropic.Anthropic, image_path: str, segment_num: in
 def split_segment(video_path: str, start: float, end: float, output_path: str) -> None:
     subprocess.run(
         [
-            "ffmpeg", "-y",
+            FFMPEG, "-y",
             "-ss", str(start),
             "-t", str(end - start),
             "-i", video_path,
@@ -216,7 +230,7 @@ def analyze_amv(
     }
 
     analysis_path = amv_dir / "amv_analysis.json"
-    analysis_path.write_text(json.dumps(analysis, indent=2, ensure_ascii=False))
+    analysis_path.write_text(json.dumps(analysis, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"\nAnalysis saved: {analysis_path}")
 
     return analysis
