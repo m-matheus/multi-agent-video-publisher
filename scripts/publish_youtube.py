@@ -8,6 +8,7 @@ import argparse
 import json
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -26,6 +27,9 @@ def parse_args():
     parser.add_argument("--video-path", required=True, help="Path to final video")
     parser.add_argument("--thumbnail-path", required=True, help="Path to thumbnail image")
     parser.add_argument("--privacy", default="private", choices=["private", "unlisted", "public"])
+    parser.add_argument("--publish-at", default=None,
+                        help="Schedule publish time in local time, format: 'YYYY-MM-DD HH:MM'. "
+                             "Sets privacy to private and auto-publishes at the given time.")
     parser.add_argument("--channel-id", default=None, help="YouTube channel ID to upload to (for multi-channel accounts)")
     parser.add_argument("--list-channels", action="store_true", help="List available channels and exit")
     return parser.parse_args()
@@ -197,6 +201,18 @@ def main():
     selected_channel = select_channel(youtube, channel_id)
 
     content_type = script.get("content_type", "anime")
+
+    # Resolve publish-at: parse local time, convert to RFC 3339 UTC offset string
+    publish_at_rfc = None
+    if args.publish_at:
+        try:
+            local_dt = datetime.strptime(args.publish_at, "%Y-%m-%d %H:%M")
+            local_dt = local_dt.astimezone()  # attach local timezone
+            publish_at_rfc = local_dt.strftime("%Y-%m-%dT%H:%M:%S") + local_dt.strftime("%z")[:3] + ":" + local_dt.strftime("%z")[3:]
+        except ValueError:
+            print(f"ERROR: --publish-at must be in 'YYYY-MM-DD HH:MM' format, got: {args.publish_at}")
+            sys.exit(1)
+
     metadata = {
         "snippet": {
             "title": script["title"][:100],
@@ -206,14 +222,18 @@ def main():
             "channelId": selected_channel,
         },
         "status": {
-            "privacyStatus": args.privacy,
+            "privacyStatus": "private" if publish_at_rfc else args.privacy,
             "selfDeclaredMadeForKids": content_type == "bedtime-story",
+            **({"publishAt": publish_at_rfc} if publish_at_rfc else {}),
         },
     }
 
     print(f"Publishing to YouTube: {script['title']}")
     print(f"  Channel: {selected_channel}")
-    print(f"  Privacy: {args.privacy}")
+    if publish_at_rfc:
+        print(f"  Scheduled: {args.publish_at} local -> {publish_at_rfc}")
+    else:
+        print(f"  Privacy: {args.privacy}")
     print(f"  Category: {CATEGORY_MAP.get(content_type, '22')}")
 
     try:
@@ -231,7 +251,8 @@ def main():
             "video_id": video_id,
             "url": video_url,
             "studio_url": studio_url,
-            "privacy": args.privacy,
+            "privacy": "scheduled" if publish_at_rfc else args.privacy,
+            "publish_at": publish_at_rfc or None,
             "channel_id": selected_channel,
             "title": script["title"],
         }

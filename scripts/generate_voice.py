@@ -125,8 +125,14 @@ def main():
     segment_durations = []
 
     for i, scene in enumerate(scenes):
-        text = scene["narration_text"]
+        text = scene.get("narration_text", "").strip()
         segment_path = segments_dir / f"segment_{i+1:02d}.mp3"
+
+        if not text:
+            print(f"  Segment {i+1}: silent (no narration_text)")
+            segment_paths.append(None)
+            segment_durations.append(0)
+            continue
 
         try:
             audio_bytes = generate_segment(text, voice_id, model_id, config["elevenlabs_api_key"])

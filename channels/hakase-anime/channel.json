@@ -6,12 +6,12 @@
   "bio_short": "Your anime professor is in. Rankings, recommendations & deep dives — if it hits different, we cover it. New video every week. 博士",
   "bio_long": "Welcome to Hakase Anime — your guide to the best anime has to offer.\n\nWe break down rankings, hidden gems, must-watch series, and the moments that made anime history. Whether you're new to anime or a seasoned veteran, there's always something worth discovering.\n\n📌 New videos weekly\n🎌 Top lists · Character breakdowns · Season recaps · Lore dives\n\nDrop your favorite anime in the comments — the professor is always taking notes. 博士",
   "brand": {
-    "character_concept": "Cool anime professor archetype: short dark hair, round glasses with glowing blue lenses, dark high-collar jacket with subtle tech details, confident smirk",
-    "palette": "deep purple #1a0a2e background, gold #FFD700 accents, electric blue #4fc3f7 highlights",
-    "style": "MAPPA-style quality, dramatic cinematic lighting, ultra-detailed"
+    "character_concept": "Dark brooding anime male: short spiky black hair, dark-framed glasses, black high-collar jacket, thoughtful hand-near-face pose. Background is a crimson red brushstroke circle on deep black — rising sun motif with grunge texture.",
+    "palette": "deep black #0d0d0d background, crimson red #CC0000 accents, white #FFFFFF text — no gold, no purple, no blue",
+    "style": "Dark manga-ink aesthetic, grungy brushstroke textures, high contrast black and red, dramatic shadows, Japanese rising sun motif, intense and brooding"
   },
   "dalle_prompts": {
-    "profile": "Anime character portrait, cool professor archetype: short dark hair, round glasses with glowing blue lenses, dark high-collar jacket, confident smirk. Dramatic deep purple and dark blue background with subtle gold and electric blue lighting. MAPPA-style quality, sharp cinematic shading. Centered square composition, character fills the frame. No text, no watermarks, no logos.",
-    "banner": "Wide anime banner collage featuring iconic moments from multiple famous anime series — intense battles, dramatic power-ups, emotional scenes — each framed as glowing panels or portals against a deep dark purple background with gold particles and electric blue energy effects. Ultra-detailed, cinematic composition, 8K quality, 16:9 widescreen. No text, no watermarks, no logos."
+    "profile": "Anime character portrait, brooding male: short spiky black hair, dark-framed glasses, black high-collar jacket, hand raised pensively near face. Deep black background with a bold crimson red brushstroke circle behind the character, grunge texture. Dark manga-ink style, high contrast, dramatic shadows. Centered square composition, character fills the frame. No text, no watermarks, no logos.",
+    "banner": "Wide anime banner, deep black background (#0d0d0d), large bold crimson red brushstroke circle (rising sun) in the center. Multiple iconic anime characters — Naruto, Luffy, Attack on Titan Colossal Titan, Demon Slayer, Goku, Jujutsu Kaisen — arranged left and right in dark high-contrast manga-ink style with red and black color treatment. Gothic bold typography space for 'HAKASE ANIME' title. Grungy brushstroke textures, ultra-detailed, cinematic 16:9 widescreen. No text, no watermarks, no logos."
   }
 }

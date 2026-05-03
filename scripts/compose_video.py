@@ -128,6 +128,28 @@ def make_rank_badge_filters(rank: int, name: str, font_path: str,
     return rank_f + "," + name_f
 
 
+def make_intro_overlay_filters(font_path: str,
+                                q_start: float = 1.0, q_dur: float = 6.5) -> str:
+    """'CANT WAIT FOR / SOLO LEVELING S3?' centered on the intro scene."""
+    esc_font = font_path.replace(":", "\\:")
+    eq = f"between(t\\,{q_start}\\,{q_start + q_dur})"
+    line1 = (
+        f"drawtext=fontfile='{esc_font}':text='CANT WAIT FOR'"
+        f":fontcolor=white:fontsize=90"
+        f":x=(w-text_w)/2:y=(h/2-110)"
+        f":box=1:boxcolor=0x000000AA:boxborderw=22"
+        f":shadowx=4:shadowy=4:shadowcolor=black@0.9:enable='{eq}'"
+    )
+    line2 = (
+        f"drawtext=fontfile='{esc_font}':text='SOLO LEVELING S3?'"
+        f":fontcolor=0xFF3333:fontsize=114"
+        f":x=(w-text_w)/2:y=(h/2+20)"
+        f":box=1:boxcolor=0x000000AA:boxborderw=22"
+        f":shadowx=5:shadowy=5:shadowcolor=black@1.0:enable='{eq}'"
+    )
+    return line1 + "," + line2
+
+
 def make_cta_filter(font_path: str, start: float, duration: float) -> str:
     """Red 'LIKE & SUBSCRIBE' banner centered at the bottom."""
     esc_font = font_path.replace(":", "\\:")
@@ -145,12 +167,13 @@ def make_cta_filter(font_path: str, start: float, duration: float) -> str:
     )
 
 
-def create_rank_transition_clip(scene: dict, output_path: Path, font_path: str | None) -> Path:
+def create_rank_transition_clip(scene: dict, output_path: Path, font_path: str | None, shorts: bool = False) -> Path:
     """Generate an animated rank reveal: black background with anime name + '#N' in gold."""
     duration = scene.get("duration_seconds", 2.5)
     rank = scene.get("rank", "?")
     anime_name = scene.get("name", "")
     fade_out_start = max(0.0, duration - 0.3)
+    canvas = "1080x1920" if shorts else "1920x1080"
 
     vf_parts = []
     if font_path:
@@ -176,7 +199,7 @@ def create_rank_transition_clip(scene: dict, output_path: Path, font_path: str |
 
     cmd = [
         _ffmpeg(), "-y",
-        "-f", "lavfi", "-i", f"color=c=black:s=1920x1080:d={duration}:r=24",
+        "-f", "lavfi", "-i", f"color=c=black:s={canvas}:d={duration}:r=24",
         "-vf", ",".join(vf_parts),
         "-t", str(duration),
         "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "fast",
@@ -186,36 +209,73 @@ def create_rank_transition_clip(scene: dict, output_path: Path, font_path: str |
     return output_path
 
 
-def get_scene_overlay(scene: dict, scene_idx: int, total_scenes: int, title: str) -> dict | None:
-    """Determine what text overlay to apply based on scene position and narration."""
-    import re
+def create_shorts_cta_clip(scene: dict, output_path: Path, font_path: str | None) -> Path:
+    """Generate a Shorts CTA card: dark background + 'FULL VIDEO ON THE CHANNEL' text."""
+    duration = scene.get("duration_seconds", 3.0)
+    cta_text = scene.get("cta_text", "FULL VIDEO ON THE CHANNEL")
+    fade_out_start = max(0.0, duration - 0.3)
 
-    # Transition clips already display the rank visually — no badge needed
+    vf_parts = []
+    if font_path:
+        esc_font = font_path.replace(":", "\\:")
+        safe_text = cta_text.replace("'", "").replace(":", " ")
+        vf_parts.append(
+            f"drawtext=fontfile='{esc_font}':text='{safe_text}'"
+            f":fontcolor=white:fontsize=68"
+            f":x=(w-text_w)/2:y=(h/2-60)"
+            f":box=1:boxcolor=0xCC0000BB:boxborderw=24"
+            f":shadowx=4:shadowy=4:shadowcolor=black@0.9"
+        )
+        vf_parts.append(
+            f"drawtext=fontfile='{esc_font}':text='Check description below!'"
+            f":fontcolor=white@0.85:fontsize=44"
+            f":x=(w-text_w)/2:y=(h/2+60)"
+            f":shadowx=3:shadowy=3:shadowcolor=black@0.8"
+        )
+    vf_parts.append("fade=t=in:st=0:d=0.2")
+    vf_parts.append(f"fade=t=out:st={fade_out_start:.2f}:d=0.3")
+
+    cmd = [
+        _ffmpeg(), "-y",
+        "-f", "lavfi", "-i", "color=c=0x0d0d0d:s=1080x1920:d={dur}:r=24".format(dur=duration),
+        "-vf", ",".join(vf_parts),
+        "-t", str(duration),
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "fast",
+        str(output_path),
+    ]
+    subprocess.run(cmd, capture_output=True, check=True)
+    return output_path
+
+
+def get_scene_overlay(scene: dict, scene_idx: int, total_scenes: int, title: str, shorts: bool = False) -> dict | None:
+    """Determine what text overlay to apply based on scene position and narration."""
     if scene.get("scene_type") == "rank_transition":
         return None
-
-    narration = scene.get("narration_text", "")
-
+    # No CTA overlay for Shorts — YouTube adds its own UI elements
+    if shorts:
+        return None
     if scene_idx == total_scenes - 1:
         return {"style": "cta", "start": 4.0, "duration": 8.0}
-
-    # re.search (not match) so it finds "number" mid-sentence
-    # Require name to start with uppercase to avoid "number four, unchallenged..." false matches
-    m = re.search(
-        r"[Nn]umber (\w+)\s*[—\-,:]\s*([A-Z][^,\n]+)",
-        narration,
-    )
-    if m:
-        word = m.group(1).lower()
-        rank = _WORD_TO_NUM.get(word, word)
-        raw = m.group(2).strip()
-        # Split on ". " only when NOT preceded by a single uppercase letter (preserves "Monkey D. Luffy")
-        clean = re.split(r"(?<![A-Z])\.\s+", raw)[0]
-        words = clean.split()[:4]
-        name = " ".join(words).rstrip(".,!").upper()
-        return {"style": "rank", "rank": rank, "name": name, "start": 1.0, "duration": 5.5}
-
     return None
+
+
+def concat_clips_for_scene(clips: list, output_path, ffmpeg_path: str) -> "Path":
+    """Concatenate multiple video clips into one file using ffmpeg concat demuxer."""
+    from pathlib import Path
+    output_path = Path(output_path)
+    if len(clips) == 1:
+        return Path(clips[0])
+    list_path = output_path.with_suffix(".concat.txt")
+    with open(list_path, "w", encoding="utf-8") as f:
+        for c in clips:
+            f.write(f"file '{Path(c).resolve().as_posix()}'\n")
+    cmd = [ffmpeg_path, "-y", "-f", "concat", "-safe", "0",
+           "-i", str(list_path), "-c", "copy", str(output_path)]
+    result = subprocess.run(cmd, capture_output=True, timeout=120)
+    list_path.unlink(missing_ok=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"Concat failed: {result.stderr.decode(errors='replace')[-400:]}")
+    return output_path
 
 
 def parse_args():
@@ -227,8 +287,14 @@ def parse_args():
     parser.add_argument("--bgm-path", default=None, help="Optional background music path")
     parser.add_argument("--bgm-volume", type=float, default=0.15, help="BGM volume (0-1)")
     parser.add_argument("--srt-path", default=None, help="Optional SRT subtitle file to embed as a soft track")
+    parser.add_argument("--endcard-path", default=None,
+                        help="Optional endcard image to append at the end of the video (e.g. channels/hakase-anime/assets/endcard.png)")
+    parser.add_argument("--endcard-duration", type=float, default=20.0,
+                        help="Duration in seconds for the endcard clip (default: 20s)")
     parser.add_argument("--zoom-crop", action="store_true",
                         help="Apply 7%% zoom + center crop on video clips to remove edge watermarks")
+    parser.add_argument("--shorts", action="store_true",
+                        help="Output vertical 1080x1920 format for YouTube Shorts")
     parser.add_argument("--amv-base-dir", default=None,
                         help="Base directory containing amv1/, amv2/, ... subdirs. "
                              "When set, scenes with an 'amv' field pull clips from amvN/frames/ "
@@ -309,6 +375,7 @@ def create_scene_clip(
     scene_type: str = "normal",
     scene: dict | None = None,
     zoom_crop: bool = False,
+    shorts: bool = False,
 ) -> Path:
     """
     Create a scene clip from input media with effects applied.
@@ -321,7 +388,13 @@ def create_scene_clip(
 
     # Rank transition: generated clip — no source media required
     if scene_type == "rank_transition":
-        return create_rank_transition_clip(scene or {}, output_path, font_path)
+        return create_rank_transition_clip(scene or {}, output_path, font_path, shorts=shorts)
+
+    # Shorts CTA: generated clip — no source media required
+    if scene_type == "shorts_cta":
+        return create_shorts_cta_clip(scene or {}, output_path, font_path)
+
+    out_w, out_h = (1080, 1920) if shorts else (1920, 1080)
 
     # Intro scenes get a faster, more dramatic Ken Burns zoom
     zoom_speed = 0.002 if scene_type == "intro" else 0.0008
@@ -333,6 +406,21 @@ def create_scene_clip(
 
     # Build optional drawtext suffix
     drawtext = ""
+    # Scene-level overlay_text: explicit text burned into the clip (works in shorts too)
+    if scene and scene.get("overlay_text") and font_path:
+        esc_font = font_path.replace(":", "\\:")
+        safe_overlay = scene["overlay_text"].replace("'", "").replace(":", " ").replace("\\", "")
+        drawtext += (
+            f",drawtext=fontfile='{esc_font}'"
+            f":text='{safe_overlay}'"
+            f":fontcolor=white"
+            f":fontsize=80"
+            f":x=(w-text_w)/2"
+            f":y=h*2/3"
+            f":box=1:boxcolor=0xCC0000CC:boxborderw=26"
+            f":shadowx=4:shadowy=4:shadowcolor=black@0.9"
+            f":enable='between(t\\,0.5\\,{target_duration})'"
+        )
     if text_overlay:
         font_path = find_system_font()
         if font_path:
@@ -347,6 +435,13 @@ def create_scene_clip(
                     font_path,
                     text_overlay.get("start", 4.0), text_overlay.get("duration", 8.0),
                 )
+            elif style == "intro_question":
+                drawtext = "," + make_intro_overlay_filters(font_path)
+            elif style == "intro_hook":
+                drawtext = "," + make_intro_hook_filter(
+                    font_path,
+                    text_overlay.get("start", 0.5), text_overlay.get("duration", 7.5),
+                )
             else:
                 drawtext = "," + make_drawtext_filter(
                     text=text_overlay["text"],
@@ -360,7 +455,7 @@ def create_scene_clip(
     if is_image:
         vf = (
             f"zoompan=z='min(zoom+{zoom_speed},{zoom_max})':d={int(target_duration*24)}"
-            f":x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1920x1080,fps=24{drawtext}"
+            f":x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={out_w}x{out_h},fps=24{drawtext}"
         )
         cmd = [
             _ffmpeg(), "-y",
@@ -371,11 +466,15 @@ def create_scene_clip(
             str(output_path),
         ]
     elif is_gif or ext == ".webm":
-        if zoom_crop:
-            # Scale 12% larger, then crop from top-left to remove bottom-right watermark
-            vf = f"scale=2150:1210:force_original_aspect_ratio=increase,crop=1920:1080:0:0,fps=24{drawtext}"
+        if shorts:
+            # Letterbox: fit full 16:9 frame inside 9:16 with black bars
+            vf = f"scale={out_w}:{out_h}:force_original_aspect_ratio=decrease,pad={out_w}:{out_h}:(ow-iw)/2:(oh-ih)/2:black,fps=24{drawtext}"
         else:
-            vf = f"scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,fps=24{drawtext}"
+            if zoom_crop:
+                base_scale = f"scale=2150:1210:force_original_aspect_ratio=increase,crop=1920:1080:0:0"
+            else:
+                base_scale = f"scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2"
+            vf = f"{base_scale},fps=24{drawtext}"
         cmd = [
             _ffmpeg(), "-y",
             "-stream_loop", "-1", "-i", str(input_path),
@@ -392,11 +491,15 @@ def create_scene_clip(
         except Exception:
             clip_duration = target_duration
 
-        if zoom_crop:
-            # Scale 12% larger, then crop from top-left to remove bottom-right watermark
-            vf = f"scale=2150:1210:force_original_aspect_ratio=increase,crop=1920:1080:0:0,fps=24{drawtext}"
+        if shorts:
+            # Letterbox: fit full 16:9 frame inside 9:16 with black bars
+            vf = f"scale={out_w}:{out_h}:force_original_aspect_ratio=decrease,pad={out_w}:{out_h}:(ow-iw)/2:(oh-ih)/2:black,fps=24{drawtext}"
         else:
-            vf = f"scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,fps=24{drawtext}"
+            if zoom_crop:
+                base_scale = f"scale=2150:1210:force_original_aspect_ratio=increase,crop=1920:1080:0:0"
+            else:
+                base_scale = f"scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2"
+            vf = f"{base_scale},fps=24{drawtext}"
 
         if clip_duration >= target_duration:
             cmd = [
@@ -598,6 +701,7 @@ def main():
     # Per-AMV clip routing: if --amv-base-dir is set, load clip lists per amv number
     amv_files: dict[int, list[Path]] = {}
     amv_idx: dict[int, int] = {}
+    amv_clip_durations: dict[int, list[float]] = {}
     if args.amv_base_dir:
         amv_base = Path(args.amv_base_dir)
         for n in range(1, 20):
@@ -609,6 +713,15 @@ def main():
                     amv_idx[n] = 0
         if amv_files:
             print(f"Per-AMV routing enabled: " + ", ".join(f"amv{n}={len(v)} clips" for n, v in sorted(amv_files.items())))
+            # Pre-load clip durations so we can consume the right number per scene
+            amv_clip_durations: dict[int, list[float]] = {}
+            for n, clips in amv_files.items():
+                amv_clip_durations[n] = []
+                for c in clips:
+                    try:
+                        amv_clip_durations[n].append(get_video_duration(c))
+                    except Exception:
+                        amv_clip_durations[n].append(10.0)
 
     state = StateManager()
     state.update_step("step-05-video-composition", "running")
@@ -629,14 +742,32 @@ def main():
         scene_type = scene.get("scene_type", "normal")
         amv_num = scene.get("amv")
 
-        if scene_type == "rank_transition":
+        if scene_type in ("rank_transition", "shorts_cta"):
             source = None
-        elif amv_num and amv_num in amv_files:
-            # Per-AMV routing: pull next clip from this AMV's frame pool
+        elif "clip_index" in scene and amv_num and amv_num in amv_files:
+            # Manual clip pin: use exact index from this AMV's pool
             clips = amv_files[amv_num]
+            source = clips[scene["clip_index"] % len(clips)]
+        elif amv_num and amv_num in amv_files:
+            # Per-AMV routing: consume enough clips to fill target_duration without looping
+            clips = amv_files[amv_num]
+            durations = amv_clip_durations.get(amv_num, [])
             idx = amv_idx[amv_num]
-            source = clips[min(idx, len(clips) - 1)]
-            amv_idx[amv_num] += 1
+            selected, accumulated = [], 0.0
+            j = idx
+            while accumulated < target_duration and j < len(clips):
+                selected.append(clips[j])
+                accumulated += durations[j] if j < len(durations) else 10.0
+                j += 1
+            if not selected:
+                selected = [clips[min(idx, len(clips) - 1)]]
+                j = idx + 1
+            amv_idx[amv_num] = j
+            if len(selected) > 1:
+                concat_out = temp_dir / f"concat_amv{amv_num}_{i:02d}.mp4"
+                source = concat_clips_for_scene(selected, concat_out, _ffmpeg())
+            else:
+                source = selected[0]
         elif source_files:
             source = source_files[min(file_idx, len(source_files) - 1)]
             file_idx += 1
@@ -644,7 +775,7 @@ def main():
             source = None
 
         clip_path = temp_dir / f"processed_{i+1:02d}.mp4"
-        overlay = get_scene_overlay(scene, i, total_scenes, title) if font_available else None
+        overlay = get_scene_overlay(scene, i, total_scenes, title, shorts=args.shorts) if font_available else None
         if overlay:
             style = overlay.get("style", "basic")
             if style == "rank":
@@ -658,6 +789,8 @@ def main():
 
         if scene_type == "rank_transition":
             source_name = f"[RANK TRANSITION #{scene.get('rank', '?')}]"
+        elif scene_type == "shorts_cta":
+            source_name = "[SHORTS CTA]"
         else:
             source_name = source.name if source else "[none]"
         print(f"  Processing scene {i+1}: {source_name} -> {target_duration}s{overlay_label}")
@@ -666,23 +799,54 @@ def main():
             create_scene_clip(
                 source, clip_path, target_duration,
                 text_overlay=overlay, scene_type=scene_type, scene=scene,
-                zoom_crop=args.zoom_crop,
+                zoom_crop=args.zoom_crop, shorts=args.shorts,
             )
             scene_clips.append(clip_path)
         except subprocess.CalledProcessError as e:
             print(f"  ERROR processing scene {i+1}: {e}")
             # Create a black frame fallback
+            canvas = "1080x1920" if args.shorts else "1920x1080"
             cmd = [
                 _ffmpeg(), "-y",
-                "-f", "lavfi", "-i", f"color=c=black:s=1920x1080:d={target_duration}:r=24",
+                "-f", "lavfi", "-i", f"color=c=black:s={canvas}:d={target_duration}:r=24",
                 "-c:v", "libx264", "-pix_fmt", "yuv420p",
                 str(clip_path),
             ]
             subprocess.run(cmd, capture_output=True, check=True)
             scene_clips.append(clip_path)
 
+    # Append endcard if provided (skipped for Shorts)
+    if args.endcard_path and not args.shorts:
+        endcard_src = Path(args.endcard_path)
+        if endcard_src.exists():
+            endcard_clip_path = temp_dir / "endcard.mp4"
+            print(f"  Processing endcard: {endcard_src.name} -> {args.endcard_duration}s")
+            try:
+                create_scene_clip(
+                    endcard_src, endcard_clip_path, args.endcard_duration,
+                    scene_type="normal", zoom_crop=False,
+                )
+                scene_clips.append(endcard_clip_path)
+                # Extend narration with silence so audio covers the endcard
+                extended_audio_path = Path(args.audio_dir) / "narration_extended.mp3"
+                subprocess.run([
+                    _ffmpeg(), "-y",
+                    "-i", str(audio_path),
+                    "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono",
+                    "-filter_complex",
+                    f"[1:a]atrim=end={args.endcard_duration}[silence];[0:a][silence]concat=n=2:v=0:a=1[aout]",
+                    "-map", "[aout]",
+                    "-c:a", "libmp3lame", "-ar", "24000", "-q:a", "4",
+                    str(extended_audio_path),
+                ], capture_output=True, check=True)
+                audio_path = extended_audio_path
+            except Exception as e:
+                print(f"  WARNING: Could not process endcard: {e}")
+        else:
+            print(f"  WARNING: Endcard image not found: {endcard_src}")
+
     # Build and execute final composition
-    output_path = final_dir / "final_video.mp4"
+    output_path = final_dir / ("final_short.mp4" if args.shorts else "final_video.mp4")
     bgm_path = Path(args.bgm_path) if args.bgm_path else None
     srt_path = Path(args.srt_path) if args.srt_path else None
 

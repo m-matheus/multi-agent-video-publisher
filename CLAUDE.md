@@ -309,6 +309,52 @@ Last scene: scene_type="normal", ~14s, outro narration (CTA overlay auto-added b
 
 ---
 
+## Shorts Workflow (companion Short for any video)
+
+After the main video is approved, always offer to generate a companion YouTube Short (30s vertical). The Short reuses the same AMV frames already downloaded — no extra downloads needed.
+
+### Shorts Step 1: Generate script_short.json (YOU do this)
+- Write to `{output_dir}/script/script_short.json`
+- **Structure:** 1 intro scene (~4s) + 1 rank_transition + 1 normal per rank + 1 outro with CTA (~5s)
+- **Total:** ≤ 30s
+- **Narration:** Very short, punchy — 1–2 sentences max per scene
+- **Same `amv` routing** as the main video
+- **Title** must contain `#Shorts` (YouTube detection)
+- **No `search_tags`** — frames already extracted
+
+### Shorts Step 2: Generate Voice
+```bash
+python scripts/generate_voice.py --script-path "{output_dir}/script/script_short.json" --output-dir "{output_dir}/short"
+```
+
+### Shorts Step 3: Compose Short (vertical 1080×1920)
+```bash
+python scripts/compose_video.py \
+  --script-path "{output_dir}/script/script_short.json" \
+  --frames-dir "{output_dir}/amv1/frames" \
+  --audio-dir "{output_dir}/short/audio" \
+  --output-dir "{output_dir}/short" \
+  --bgm-path "{output_dir}/audio/bgm.mp3" \
+  --bgm-volume 0.15 \
+  --zoom-crop \
+  --shorts \
+  --amv-base-dir "{output_dir}"
+```
+Output: `{output_dir}/short/final/final_short.mp4`
+
+### Shorts Step 4: Publish
+```bash
+python scripts/publish_youtube.py \
+  --script-path "{output_dir}/script/script_short.json" \
+  --video-path "{output_dir}/short/final/final_short.mp4" \
+  --thumbnail-path "{output_dir}/thumbnail/thumbnail.jpg" \
+  --privacy "public" \
+  --channel-id "UCyRJuLu9xr7mrRh-j52RQ9Q"
+```
+Shorts can go public immediately (no endcard, no chapter timestamps needed).
+
+---
+
 ## Rules
 - Scene durations must sum to target_duration_seconds (±5s)
 - Minimum 5 scenes, maximum 20 scenes

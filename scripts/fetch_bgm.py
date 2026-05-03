@@ -56,7 +56,7 @@ def download_from_youtube(url: str, output_path: Path) -> None:
         url,
     ]
     print("  Downloading audio stream...")
-    result = subprocess.run(dl_cmd, capture_output=True, text=True, timeout=300)
+    result = subprocess.run(dl_cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=300)
     if result.returncode != 0:
         raise RuntimeError(f"yt-dlp failed:\n{result.stderr[-1000:]}")
 
@@ -67,7 +67,7 @@ def download_from_youtube(url: str, output_path: Path) -> None:
     tmp_file = candidates[0]
 
     # Step 3: convert to MP3 with FFmpeg
-    print(f"  Converting {tmp_file.suffix} → mp3...")
+    print(f"  Converting {tmp_file.suffix} -> mp3...")
     ffmpeg_cmd = [
         ffmpeg_path, "-y", "-i", str(tmp_file),
         "-vn", "-acodec", "libmp3lame", "-q:a", "4",

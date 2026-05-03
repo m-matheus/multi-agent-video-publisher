@@ -1,0 +1,17 @@
+{
+  "name": "Bedtime Chronicles",
+  "channel_id": "",
+  "slug": "bedtime-chronicles",
+  "content_type": "bedtime-story",
+  "bio_short": "Gentle stories for little dreamers. Every night, a new adventure waiting just behind your eyelids. Sweet dreams start here. 🦉",
+  "bio_long": "Welcome to Bedtime Chronicles — where every night ends with a story.\n\nWe craft calm, magical tales designed to help children unwind, imagine, and drift gently into sleep. From enchanted forests to cozy cottages on rainy nights, every story is a journey into a peaceful world.\n\n🌙 New stories every week\n📖 Ages 3–8 · Calming narration · Soft background music\n\nTuck in, press play, and let the story carry you away. 🦉",
+  "brand": {
+    "character_concept": "Wise friendly owl with round glasses and a large open storybook, sitting on a moonlit branch surrounded by glowing fireflies and soft magical light",
+    "palette": "soft midnight blue #0d1b2a background, warm golden moonlight #f5c842 accents, pastel lavender #c8b4e3 and mint #a8d8b9 highlights",
+    "style": "children's storybook illustration, soft watercolor style, warm dreamy atmosphere, gentle and cozy"
+  },
+  "dalle_prompts": {
+    "profile": "Cute wise owl character with round glasses and a small open storybook, sitting on a moonlit branch with glowing fireflies around it. Soft watercolor storybook illustration style. Warm golden moonlight, deep midnight blue background, dreamy magical atmosphere. Centered square composition, character fills the frame. No text, no watermarks, no logos.",
+    "banner": "Wide storybook banner showing a cozy magical nighttime scene: a wise owl on a branch reading a glowing book under a large full moon, surrounded by enchanted forest silhouettes, fireflies, and floating stars. Soft watercolor illustration style with warm golden and lavender tones against a deep midnight blue sky. Ultra-detailed, dreamy and peaceful atmosphere, 16:9 widescreen. No text, no watermarks, no logos."
+  }
+}

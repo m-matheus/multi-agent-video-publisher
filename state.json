@@ -46,69 +46,60 @@
         "step-04-voice-narration": {
           "started_at": "2026-04-29T13:13:32.658429+00:00",
           "status": "completed",
-          "completed_at": "2026-04-30T13:59:50.392353+00:00",
+          "completed_at": "2026-05-03T14:54:06.460626+00:00",
           "outputs": {
-            "narration_path": "output\\5-animes-2026-20260430-101447\\audio\\narration_full.mp3",
+            "narration_path": "output\\these-5-anime-turned-nonfans-20260502-1612\\short\\audio\\narration_full.mp3",
             "segment_durations": [
-              5.328979591836735,
-              7.471020408163265,
-              1.9591836734693877,
-              15.307755102040817,
-              8.82938775510204,
-              0.9926530612244898,
-              12.591020408163265,
-              9.482448979591837,
+              4.12734693877551,
               1.1493877551020408,
-              14.759183673469387,
-              8.986122448979591,
-              1.1493877551020408,
-              15.151020408163266,
-              8.907755102040817,
-              1.4106122448979592,
-              13.08734693877551,
+              8.359183673469389,
+              1.2277551020408164,
+              8.124081632653061,
+              1.0710204081632653,
               8.51591836734694,
-              11.96408163265306
+              0.9926530612244898,
+              9.404081632653062,
+              4.911020408163266
             ],
-            "total_duration": 152.81632653061226
+            "total_duration": 50.93877551020408
           }
         },
         "step-06-thumbnail-creation": {
           "started_at": "2026-04-29T13:13:34.704113+00:00",
           "status": "completed",
-          "completed_at": "2026-04-30T14:18:54.414657+00:00",
+          "completed_at": "2026-05-02T02:47:04.630700+00:00",
           "outputs": {
-            "thumbnail_path": "output\\5-animes-2026-20260430-101447\\thumbnail\\thumbnail.png",
-            "hook": [
-              "MUST WATCH",
-              "NOW",
-              "RANKED"
-            ]
+            "thumbnail_path": "output\\top-5-romance-anime-20260501\\thumbnail\\thumbnail.jpg",
+            "prompt": "Create an anime thumbnail featuring two characters standing close together, radiating a poignant and heartfelt atmosphere. In the foreground, portray Jinwoo—an original anime character. He has tousled, medium-length dark brown hair with soft amber eyes that reflect vulnerability and depth. His expression is contemplative, capturing the essence of yearning romance. He wears a casual, stylish outfit—a light blue collared shirt under a fitted charcoal grey sweater, paired with black jeans. Beside Jinwoo is a female character with long, flowing, silky chestnut hair and gentle, bright green eyes that convey warmth. She wears a simple, elegant white dress with a flowing skirt that sways in the gentle breeze.\n\nThe scene is set under a cascade of cherry blossom petals, gently swirling around the characters in the warm glow of the setting sun. The background depicts a serene park with lush greenery blurred subtly to draw focus to the characters, reinforcing the feeling of an intimate moment shared in solitude. Soft, warm lighting bathes the entire composition, emphasizing the emotional connection between the two, with dappled sunlight creating a dreamy bokeh effect.\n\nThe overall color palette features pastel tones—soft pinks and peaches of the cherry blossoms, the gentle green of the foliage, faint golds of the sunlight, and the muted colors of the characters' attire, blending harmoniously to evoke a sense of nostalgia and longing.\n\nIn the upper portion of the image, centrally aligned, render the text in elegant, bold white cursive: \"Top 5 Romance Anime That Will Break Your Heart.\" Below it, in a slightly smaller size but the same font, list the series in descending order: \"#5 Horimiya, #4 The Angel Next Door Spoils Me Rotten, #3 Love Through a Prism, #2 A Silent Voice, #1 Your Lie in April.\" Ensure all text is fully centered and never cropped, maintaining a perfect balance within the frame."
           }
         },
         "step-05-video-composition": {
           "started_at": "2026-04-29T13:25:53.641223+00:00",
           "status": "completed",
-          "completed_at": "2026-04-30T16:28:36.137206+00:00",
+          "completed_at": "2026-05-03T15:01:56.234217+00:00",
           "outputs": {
-            "video_path": "output\\5-animes-2026-20260430-101447\\final\\final_video.mp4",
-            "duration": 192.17,
-            "size_mb": 109.8
+            "video_path": "output\\these-5-anime-turned-nonfans-20260502-1612\\short\\final\\final_short.mp4",
+            "duration": 59.375,
+            "size_mb": 18.08
           }
         },
         "step-02-image-generation": {
           "started_at": "2026-04-29T16:10:49.641526+00:00",
           "status": "completed",
-          "completed_at": "2026-04-29T16:11:12.045133+00:00",
+          "completed_at": "2026-04-30T19:56:31.184874+00:00",
           "outputs": {
             "image_paths": [
-              "output\\princesa-jardim-magico-20260429\\images\\scene_01.png",
-              "output\\princesa-jardim-magico-20260429\\images\\scene_02.png",
-              "output\\princesa-jardim-magico-20260429\\images\\scene_03.png",
-              "output\\princesa-jardim-magico-20260429\\images\\scene_04.png",
-              "output\\princesa-jardim-magico-20260429\\images\\scene_05.png",
-              "output\\princesa-jardim-magico-20260429\\images\\scene_06.png",
-              "output\\princesa-jardim-magico-20260429\\images\\scene_07.png",
-              "output\\princesa-jardim-magico-20260429\\images\\scene_08.png"
+              "output\\oliver-the-owl-20260430\\frames\\scene_01.jpg",
+              "output\\oliver-the-owl-20260430\\frames\\scene_02.jpg",
+              "output\\oliver-the-owl-20260430\\frames\\scene_03.jpg",
+              "output\\oliver-the-owl-20260430\\frames\\scene_04.jpg",
+              "output\\oliver-the-owl-20260430\\frames\\scene_05.jpg",
+              "output\\oliver-the-owl-20260430\\frames\\scene_06.jpg",
+              "output\\oliver-the-owl-20260430\\frames\\scene_07.jpg",
+              "output\\oliver-the-owl-20260430\\frames\\scene_08.jpg",
+              "output\\oliver-the-owl-20260430\\frames\\scene_09.jpg",
+              "output\\oliver-the-owl-20260430\\frames\\scene_10.jpg",
+              "output\\oliver-the-owl-20260430\\frames\\scene_11.jpg"
             ]
           }
         },
@@ -134,42 +125,43 @@
         "step-bgm-fetch": {
           "started_at": "2026-04-29T22:42:57.906279+00:00",
           "status": "completed",
-          "completed_at": "2026-04-30T15:46:23.097164+00:00",
+          "completed_at": "2026-05-02T19:42:30.378838+00:00",
           "outputs": {
-            "bgm_path": "output\\5-animes-2026-20260430-101447\\audio\\bgm.mp3"
+            "bgm_path": "output\\these-5-anime-turned-nonfans-20260502-1612\\audio\\bgm.mp3"
           }
         },
         "fetch-amv": {
           "started_at": "2026-04-30T00:25:21.441929+00:00",
           "status": "completed",
           "outputs": {
-            "amv_path": "output\\5-animes-2026-20260430-101447\\amv3\\amv\\amv_source.mp4",
-            "title": "Welcome To Paradise - Hell's Paradise -「AMV」- Anime MV",
-            "duration_seconds": 234
+            "amv_path": "output\\these-5-anime-turned-nonfans-20260502-1612\\amv4\\amv\\amv_source.mp4",
+            "title": "Death Note ＡＭＶ - Alumina",
+            "duration_seconds": 298
           },
-          "completed_at": "2026-04-30T15:45:08.577907+00:00"
+          "completed_at": "2026-05-02T19:14:53.990235+00:00"
         },
         "analyze-amv": {
           "started_at": "2026-04-30T00:39:38.931132+00:00",
           "status": "completed",
           "outputs": {
-            "analysis_path": "output\\5-animes-2026-20260430-101447\\amv3\\amv\\amv_analysis.json",
-            "scene_count": 10,
-            "total_duration_seconds": 233.82
+            "analysis_path": "output\\these-5-anime-turned-nonfans-20260502-1612\\amv5\\amv\\amv_analysis.json",
+            "scene_count": 12,
+            "total_duration_seconds": 344.24
           },
-          "completed_at": "2026-04-30T15:51:46.285756+00:00"
+          "completed_at": "2026-05-02T19:30:49.994823+00:00"
         },
         "step-07-youtube-publishing": {
           "started_at": "2026-04-30T16:13:31.568495+00:00",
           "status": "completed",
-          "completed_at": "2026-04-30T16:54:48.585346+00:00",
+          "completed_at": "2026-05-03T15:03:08.183219+00:00",
           "outputs": {
-            "video_id": "x7wfnZO7UNE",
-            "url": "https://www.youtube.com/watch?v=x7wfnZO7UNE",
-            "studio_url": "https://studio.youtube.com/video/x7wfnZO7UNE/edit",
-            "privacy": "private",
+            "video_id": "7akON4lvc4Q",
+            "url": "https://www.youtube.com/watch?v=7akON4lvc4Q",
+            "studio_url": "https://studio.youtube.com/video/7akON4lvc4Q/edit",
+            "privacy": "public",
+            "publish_at": null,
             "channel_id": "UCyRJuLu9xr7mrRh-j52RQ9Q",
-            "title": "5 Anime You NEED to Watch in 2026 (Part 1)"
+            "title": "5 Anime That Convert Non-Fans #Shorts"
           }
         }
       }
