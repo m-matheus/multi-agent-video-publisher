@@ -70,6 +70,14 @@ def find_system_font() -> str | None:
     return None
 
 
+def _pillow_available() -> bool:
+    try:
+        import PIL
+        return True
+    except ImportError:
+        return False
+
+
 _WORD_TO_NUM = {
     "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
     "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
@@ -167,14 +175,148 @@ def make_cta_filter(font_path: str, start: float, duration: float) -> str:
     )
 
 
-def create_rank_transition_clip(scene: dict, output_path: Path, font_path: str | None, shorts: bool = False) -> Path:
-    """Generate an animated rank reveal: black background with anime name + '#N' in gold."""
+def create_rank_card_image(
+    scene: dict,
+    background_clip: "Path",
+    output_png: "Path",
+    width: int = 1920,
+    height: int = 1080,
+) -> "Path | None":
+    """
+    Generate a rank card PNG using Pillow:
+    - Extracts a frame from background_clip (the AMV for this rank)
+    - Applies heavy blur + dark overlay + radial vignette
+    - Draws rank number (gold, glow) and anime name (white, bold) centered
+    Returns output_png or None on any failure.
+    """
+    try:
+        from PIL import Image, ImageFilter, ImageDraw, ImageFont
+    except ImportError:
+        return None
+
+    rank = scene.get("rank", "?")
+    anime_name = scene.get("name", "")
+
+    # --- Extract frame at 1s from the AMV clip ---
+    frame_tmp = output_png.parent / f"_rankframe_{output_png.stem}.png"
+    cmd = [
+        _ffmpeg(), "-y", "-ss", "1", "-i", str(background_clip), "-vframes", "1",
+        "-vf", f"scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height}",
+        str(frame_tmp),
+    ]
+    if subprocess.run(cmd, capture_output=True).returncode != 0 or not frame_tmp.exists():
+        return None
+
+    img = Image.open(frame_tmp).convert("RGBA")
+    if img.size != (width, height):
+        img = img.resize((width, height), Image.LANCZOS)
+    frame_tmp.unlink(missing_ok=True)
+
+    # --- Heavy blur ---
+    img = img.filter(ImageFilter.GaussianBlur(radius=22))
+
+    # --- Dark overlay ---
+    img = Image.alpha_composite(img, Image.new("RGBA", (width, height), (0, 0, 0, 155)))
+
+    # --- Radial vignette (dark edges) ---
+    try:
+        import numpy as np
+        Y, X = np.ogrid[0:height, 0:width]
+        dist = np.sqrt(((X - width / 2) / (width / 2)) ** 2 + ((Y - height / 2) / (height / 2)) ** 2)
+        alpha = np.clip(dist * 195, 0, 195).astype(np.uint8)
+        vig = np.zeros((height, width, 4), dtype=np.uint8)
+        vig[:, :, 3] = alpha
+        img = Image.alpha_composite(img, Image.fromarray(vig))
+    except ImportError:
+        draw_vig = ImageDraw.Draw(img)
+        for i in range(80):
+            a = int(180 * (1 - i / 80) ** 2)
+            draw_vig.rectangle([i, i, width - i, height - i], outline=(0, 0, 0, a), width=2)
+
+    # --- Fonts ---
+    font_file = find_system_font()
+    try:
+        font_rank = ImageFont.truetype(font_file, 300) if font_file else ImageFont.load_default()
+        font_name = ImageFont.truetype(font_file, 90) if font_file else ImageFont.load_default()
+    except Exception:
+        font_rank = ImageFont.load_default()
+        font_name = ImageFont.load_default()
+
+    rank_text = f"#{rank}"
+    dummy_draw = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+
+    def measure(text, font):
+        try:
+            b = dummy_draw.textbbox((0, 0), text, font=font)
+            return b[2] - b[0], b[3] - b[1]
+        except AttributeError:
+            return font.getsize(text)
+
+    rw, rh = measure(rank_text, font_rank)
+    nw, nh = measure(anime_name, font_name) if anime_name else (0, 0)
+
+    total_h = rh + (24 + nh if anime_name else 0)
+    rank_x = (width - rw) // 2
+    rank_y = (height - total_h) // 2 - 20
+
+    # --- Glow layer ---
+    glow = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    gd = ImageDraw.Draw(glow)
+    for dx in range(-18, 19, 6):
+        for dy in range(-18, 19, 6):
+            gd.text((rank_x + dx, rank_y + dy), rank_text, font=font_rank, fill=(255, 210, 0, 70))
+    glow = glow.filter(ImageFilter.GaussianBlur(radius=14))
+    img = Image.alpha_composite(img, glow)
+
+    # --- Sharp text ---
+    txt = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    td = ImageDraw.Draw(txt)
+    td.text((rank_x + 7, rank_y + 7), rank_text, font=font_rank, fill=(0, 0, 0, 210))
+    td.text((rank_x, rank_y), rank_text, font=font_rank, fill=(255, 215, 0, 255))
+    if anime_name:
+        nx = (width - nw) // 2
+        ny = rank_y + rh + 24
+        td.text((nx + 4, ny + 4), anime_name, font=font_name, fill=(0, 0, 0, 200))
+        td.text((nx, ny), anime_name, font=font_name, fill=(255, 255, 255, 255))
+    img = Image.alpha_composite(img, txt)
+
+    img.convert("RGB").save(str(output_png))
+    return output_png
+
+
+def create_rank_transition_clip(scene: dict, output_path: Path, font_path: str | None, shorts: bool = False, background_clip: "Path | None" = None) -> Path:
+    """Generate an animated rank reveal with blurred AMV background (Pillow) or black card fallback."""
     duration = scene.get("duration_seconds", 2.5)
     rank = scene.get("rank", "?")
     anime_name = scene.get("name", "")
     fade_out_start = max(0.0, duration - 0.3)
     canvas = "1080x1920" if shorts else "1920x1080"
+    out_w, out_h = (1080, 1920) if shorts else (1920, 1080)
 
+    # --- Pillow path: blurred AMV frame background ---
+    if background_clip and Path(background_clip).exists() and _pillow_available():
+        bg_png = output_path.parent / f"_rankbg_{output_path.stem}.png"
+        bg_image = create_rank_card_image(scene, Path(background_clip), bg_png, out_w, out_h)
+        if bg_image and bg_image.exists():
+            vf = (
+                f"scale={out_w}:{out_h},"
+                f"fade=t=in:st=0:d=0.2,"
+                f"fade=t=out:st={fade_out_start:.2f}:d=0.3"
+            )
+            cmd = [
+                _ffmpeg(), "-y",
+                "-loop", "1", "-i", str(bg_image),
+                "-vf", vf,
+                "-t", str(duration),
+                "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "fast",
+                str(output_path),
+            ]
+            result = subprocess.run(cmd, capture_output=True)
+            bg_png.unlink(missing_ok=True)
+            if result.returncode == 0:
+                return output_path
+
+    # --- Fallback: black card with FFmpeg drawtext ---
     vf_parts = []
     if font_path:
         esc_font = font_path.replace(":", "\\:")
@@ -295,6 +437,8 @@ def parse_args():
                         help="Apply 7%% zoom + center crop on video clips to remove edge watermarks")
     parser.add_argument("--shorts", action="store_true",
                         help="Output vertical 1080x1920 format for YouTube Shorts")
+    parser.add_argument("--captions-path", default=None,
+                        help="Path to ASS subtitle file to burn into the final video (kinetic captions)")
     parser.add_argument("--amv-base-dir", default=None,
                         help="Base directory containing amv1/, amv2/, ... subdirs. "
                              "When set, scenes with an 'amv' field pull clips from amvN/frames/ "
@@ -376,6 +520,7 @@ def create_scene_clip(
     scene: dict | None = None,
     zoom_crop: bool = False,
     shorts: bool = False,
+    background_clip: "Path | None" = None,
 ) -> Path:
     """
     Create a scene clip from input media with effects applied.
@@ -388,7 +533,8 @@ def create_scene_clip(
 
     # Rank transition: generated clip — no source media required
     if scene_type == "rank_transition":
-        return create_rank_transition_clip(scene or {}, output_path, font_path, shorts=shorts)
+        return create_rank_transition_clip(scene or {}, output_path, font_path,
+                                            shorts=shorts, background_clip=background_clip)
 
     # Shorts CTA: generated clip — no source media required
     if scene_type == "shorts_cta":
@@ -526,35 +672,94 @@ def create_scene_clip(
     return output_path
 
 
-def build_synced_narration(segments_dir: Path, scenes: list[dict], output_path: Path) -> Path:
+def build_synced_narration(segments_dir: Path, scenes: list[dict], output_path: Path) -> tuple:
     """
-    Rebuild narration audio so each segment is padded with silence to its scene's
-    duration_seconds. This locks each narration onset to the corresponding video cut.
+    Rebuild narration audio locked to each scene's effective duration.
+
+    rank_transition scenes: instead of silence, play the opening of the NEXT scene's
+    narration so the rank announcement ("Number 5 — My Hero Academia") is heard while
+    the black card is visible. The following scene's audio then skips the borrowed portion.
+
+    Effective duration = max(script duration_seconds, remaining TTS audio length),
+    so speech is never cut short when TTS runs longer than the script estimate.
+    Returns (audio_path, effective_durations_list).
     """
     tmp_dir = output_path.parent / "_narr_tmp"
     tmp_dir.mkdir(exist_ok=True)
 
+    # Seconds of silence added before the rank announcement ("Number X.") on the rank card.
+    PRE_RANK_SILENCE = 0.3
+    # Seconds of trailing silence added to the last normal scene before each rank card.
+    POST_RANK_SILENCE = 0.5
+
+    # Identify normal scenes immediately preceding a rank_transition.
+    pre_transition_indices: set[int] = set()
+    for i, scene in enumerate(scenes):
+        if scene.get("scene_type") == "rank_transition" and i > 0:
+            if scenes[i - 1].get("scene_type") != "rank_transition":
+                pre_transition_indices.add(i - 1)
+
     padded_files = []
+    effective_durations = []
+
     for i, scene in enumerate(scenes):
         seg_path = segments_dir / f"segment_{i+1:02d}.mp3"
-        vid_dur = float(scene["duration_seconds"])
+        script_dur = float(scene["duration_seconds"])
         padded_path = tmp_dir / f"padded_{i+1:02d}.mp3"
 
-        if seg_path.exists():
-            cmd = [
-                _ffmpeg(), "-y", "-i", str(seg_path),
-                "-af", f"apad=whole_dur={vid_dur},atrim=end={vid_dur},aresample=24000",
-                "-c:a", "libmp3lame", "-ar", "24000", "-ac", "1", "-q:a", "4",
-                str(padded_path),
-            ]
+        if scene.get("scene_type") == "rank_transition":
+            # Play PRE_RANK_SILENCE then the rank card's own announcement segment.
+            effective_dur = script_dur
+            if seg_path.exists():
+                ann_dur = max(0.0, effective_dur - PRE_RANK_SILENCE)
+                cmd = [
+                    _ffmpeg(), "-y",
+                    "-f", "lavfi", "-i", f"anullsrc=r=24000:cl=mono",
+                    "-i", str(seg_path),
+                    "-filter_complex", (
+                        f"[0:a]atrim=end={PRE_RANK_SILENCE}[pre];"
+                        f"[1:a]atrim=end={ann_dur}[ann];"
+                        f"[pre][ann]concat=n=2:v=0:a=1[combined];"
+                        f"[combined]apad=whole_dur={effective_dur},atrim=end={effective_dur}[out]"
+                    ),
+                    "-map", "[out]",
+                    "-c:a", "libmp3lame", "-ar", "24000", "-ac", "1", "-q:a", "4",
+                    str(padded_path),
+                ]
+            else:
+                cmd = [
+                    _ffmpeg(), "-y",
+                    "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono",
+                    "-t", str(effective_dur),
+                    "-c:a", "libmp3lame", "-ar", "24000", "-ac", "1", "-q:a", "4",
+                    str(padded_path),
+                ]
         else:
-            cmd = [
-                _ffmpeg(), "-y",
-                "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono",
-                "-t", str(vid_dur),
-                "-c:a", "libmp3lame", "-ar", "24000", "-ac", "1", "-q:a", "4",
-                str(padded_path),
-            ]
+            if seg_path.exists():
+                try:
+                    actual_dur = get_video_duration(seg_path)
+                except Exception:
+                    actual_dur = script_dur
+                trailing = POST_RANK_SILENCE if i in pre_transition_indices else 0.0
+                effective_dur = max(script_dur, actual_dur) + trailing
+                af = f"apad=whole_dur={effective_dur},atrim=end={effective_dur},aresample=24000"
+                cmd = [
+                    _ffmpeg(), "-y", "-i", str(seg_path),
+                    "-af", af,
+                    "-c:a", "libmp3lame", "-ar", "24000", "-ac", "1", "-q:a", "4",
+                    str(padded_path),
+                ]
+            else:
+                effective_dur = script_dur
+                cmd = [
+                    _ffmpeg(), "-y",
+                    "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono",
+                    "-t", str(effective_dur),
+                    "-c:a", "libmp3lame", "-ar", "24000", "-ac", "1", "-q:a", "4",
+                    str(padded_path),
+                ]
+
+        effective_durations.append(effective_dur)
         subprocess.run(cmd, capture_output=True, check=True)
         padded_files.append(padded_path)
 
@@ -570,7 +775,7 @@ def build_synced_narration(segments_dir: Path, scenes: list[dict], output_path: 
     )
     import shutil as _sh
     _sh.rmtree(tmp_dir, ignore_errors=True)
-    return output_path
+    return output_path, effective_durations
 
 
 def build_final_video(
@@ -580,6 +785,7 @@ def build_final_video(
     transitions: list[str],
     bgm_path: Path = None,
     bgm_volume: float = 0.15,
+    captions_path: Path = None,
 ) -> list[str]:
     """Build FFmpeg command to concatenate scene clips with audio."""
     cmd = [_ffmpeg(), "-y"]
@@ -604,10 +810,20 @@ def build_final_video(
 
     # Concatenate
     if n_clips == 1:
-        filter_parts.append("[v0]copy[vout]")
+        filter_parts.append("[v0]copy[vconcat]")
     else:
         concat_inputs = "".join(f"[v{i}]" for i in range(n_clips))
-        filter_parts.append(f"{concat_inputs}concat=n={n_clips}:v=1:a=0[vout]")
+        filter_parts.append(f"{concat_inputs}concat=n={n_clips}:v=1:a=0[vconcat]")
+
+    # Burn kinetic captions if provided
+    if captions_path:
+        ass_path = Path(captions_path).resolve().as_posix()
+        # FFmpeg ass filter requires colon after drive letter to be escaped on Windows
+        import re
+        ass_path = re.sub(r"^([A-Za-z]):/", r"\1\\:/", ass_path)
+        filter_parts.append(f"[vconcat]ass='{ass_path}'[vout]")
+    else:
+        filter_parts.append("[vconcat]copy[vout]")
 
     # Audio mixing
     if bgm_path:
@@ -680,8 +896,12 @@ def main():
     if segments_dir.exists() and any(segments_dir.iterdir()):
         synced_path = Path(args.audio_dir) / "narration_synced.mp3"
         print("Building synced narration from per-scene segments...")
-        audio_path = build_synced_narration(segments_dir, script["scenes"], synced_path)
+        audio_path, effective_durations = build_synced_narration(segments_dir, script["scenes"], synced_path)
         print(f"  Synced narration: {synced_path.name}")
+        # Extend scene durations to match actual TTS so video clips are never shorter than the speech
+        for scene, eff_dur in zip(script["scenes"], effective_durations):
+            if eff_dur > scene["duration_seconds"]:
+                scene["duration_seconds"] = eff_dur
 
     if not source_dir.exists():
         print(f"ERROR: Source directory not found: {source_dir}")
@@ -744,11 +964,20 @@ def main():
 
         if scene_type in ("rank_transition", "shorts_cta"):
             source = None
+            # For rank_transition, pick background from the scene's AMV pool (first clip)
+            bg_clip = None
+            if scene_type == "rank_transition":
+                if amv_num and amv_num in amv_files:
+                    bg_clip = amv_files[amv_num][0]
+                elif source_files:
+                    bg_clip = source_files[0]
         elif "clip_index" in scene and amv_num and amv_num in amv_files:
+            bg_clip = None
             # Manual clip pin: use exact index from this AMV's pool
             clips = amv_files[amv_num]
             source = clips[scene["clip_index"] % len(clips)]
         elif amv_num and amv_num in amv_files:
+            bg_clip = None
             # Per-AMV routing: consume enough clips to fill target_duration without looping
             clips = amv_files[amv_num]
             durations = amv_clip_durations.get(amv_num, [])
@@ -769,9 +998,11 @@ def main():
             else:
                 source = selected[0]
         elif source_files:
+            bg_clip = None
             source = source_files[min(file_idx, len(source_files) - 1)]
             file_idx += 1
         else:
+            bg_clip = None
             source = None
 
         clip_path = temp_dir / f"processed_{i+1:02d}.mp4"
@@ -800,6 +1031,7 @@ def main():
                 source, clip_path, target_duration,
                 text_overlay=overlay, scene_type=scene_type, scene=scene,
                 zoom_crop=args.zoom_crop, shorts=args.shorts,
+                background_clip=bg_clip,
             )
             scene_clips.append(clip_path)
         except subprocess.CalledProcessError as e:
@@ -853,7 +1085,8 @@ def main():
     print(f"  Composing final video...")
     # If SRT will be embedded, encode to a temp file first, then add subtitles on top
     encode_output = final_dir / "final_nosub_tmp.mp4" if (srt_path and srt_path.exists()) else output_path
-    cmd = build_final_video(scene_clips, audio_path, encode_output, transitions, bgm_path, args.bgm_volume)
+    captions_path = Path(args.captions_path) if getattr(args, "captions_path", None) else None
+    cmd = build_final_video(scene_clips, audio_path, encode_output, transitions, bgm_path, args.bgm_volume, captions_path)
 
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)

@@ -21,6 +21,7 @@ def parse_args():
     parser.add_argument("--script-path", required=True, help="Path to script.json")
     parser.add_argument("--output-dir", required=True, help="Output directory for this run")
     parser.add_argument("--voice-id", default=None, help="Override voice ID")
+    parser.add_argument("--timestamps", action="store_true", help="Save word-level alignment JSON alongside each segment")
     return parser.parse_args()
 
 
@@ -58,6 +59,57 @@ def generate_segment(text: str, voice_id: str, model_id: str, api_key: str) -> b
                 time.sleep(wait_time)
             else:
                 raise
+
+
+def chars_to_words(alignment) -> list[dict]:
+    chars = alignment.characters
+    starts = alignment.character_start_times_seconds
+    ends = alignment.character_end_times_seconds
+    words = []
+    current_chars = []
+    word_start = None
+    word_end = None
+    for char, start, end in zip(chars, starts, ends):
+        if char in (" ", "\n", "\t"):
+            if current_chars:
+                words.append({"word": "".join(current_chars), "start": word_start, "end": word_end})
+                current_chars = []
+                word_start = None
+        else:
+            if not current_chars:
+                word_start = start
+            current_chars.append(char)
+            word_end = end
+    if current_chars:
+        words.append({"word": "".join(current_chars), "start": word_start, "end": word_end})
+    return words
+
+
+def generate_segment_with_timestamps(text: str, voice_id: str, model_id: str, api_key: str) -> tuple[bytes, list[dict]]:
+    import base64
+    from elevenlabs.client import ElevenLabs
+
+    client = ElevenLabs(api_key=api_key)
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = client.text_to_speech.convert_with_timestamps(
+                text=text,
+                voice_id=voice_id,
+                model_id=model_id,
+                output_format="mp3_44100_128",
+            )
+            audio_bytes = base64.b64decode(response.audio_base_64)
+            words = chars_to_words(response.alignment)
+            return audio_bytes, words
+        except Exception as e:
+            if attempt < max_retries - 1:
+                wait_time = 2 ** attempt
+                print(f"  Retry {attempt + 1} after {wait_time}s: {e}")
+                time.sleep(wait_time)
+            else:
+                raise
+
 
 
 def get_audio_duration(file_path: Path) -> float:
@@ -135,7 +187,12 @@ def main():
             continue
 
         try:
-            audio_bytes = generate_segment(text, voice_id, model_id, config["elevenlabs_api_key"])
+            if args.timestamps:
+                audio_bytes, words = generate_segment_with_timestamps(text, voice_id, model_id, config["elevenlabs_api_key"])
+                alignment_path = segments_dir / f"segment_{i+1:02d}_alignment.json"
+                alignment_path.write_text(json.dumps({"words": words}, ensure_ascii=False), encoding="utf-8")
+            else:
+                audio_bytes = generate_segment(text, voice_id, model_id, config["elevenlabs_api_key"])
             segment_path.write_bytes(audio_bytes)
             duration = get_audio_duration(segment_path)
             segment_paths.append(segment_path)

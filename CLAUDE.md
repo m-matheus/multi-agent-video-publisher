@@ -322,9 +322,18 @@ After the main video is approved, always offer to generate a companion YouTube S
 - **Title** must contain `#Shorts` (YouTube detection)
 - **No `search_tags`** — frames already extracted
 
-### Shorts Step 2: Generate Voice
+### Shorts Step 2: Generate Voice (with word timestamps)
 ```bash
-python scripts/generate_voice.py --script-path "{output_dir}/script/script_short.json" --output-dir "{output_dir}/short"
+python scripts/generate_voice.py --script-path "{output_dir}/script/script_short.json" --output-dir "{output_dir}/short" --timestamps
+```
+
+### Shorts Step 2b: Generate Kinetic Captions
+```bash
+python scripts/generate_captions.py \
+  --script-path "{output_dir}/script/script_short.json" \
+  --audio-dir "{output_dir}/short/audio" \
+  --output-dir "{output_dir}/short" \
+  --shorts
 ```
 
 ### Shorts Step 3: Compose Short (vertical 1080×1920)
@@ -338,7 +347,8 @@ python scripts/compose_video.py \
   --bgm-volume 0.15 \
   --zoom-crop \
   --shorts \
-  --amv-base-dir "{output_dir}"
+  --amv-base-dir "{output_dir}" \
+  --captions-path "{output_dir}/short/audio/captions.ass"
 ```
 Output: `{output_dir}/short/final/final_short.mp4`
 
@@ -352,6 +362,67 @@ python scripts/publish_youtube.py \
   --channel-id "UCyRJuLu9xr7mrRh-j52RQ9Q"
 ```
 Shorts can go public immediately (no endcard, no chapter timestamps needed).
+
+---
+
+## Curiosidade Shorts Workflow
+
+After the main video is published, offer to generate N companion "Curiosidade" Shorts — one per anime featured. Each Short covers one surprising/interesting fact about that anime/character (~40–55s vertical).
+
+These use the **already-downloaded AMV frames** — no extra downloads needed.
+
+### Curiosidade Step 1: Generate script_curiosity_{anime}.json (YOU do this)
+- Write to `{output_dir}/script/script_curiosity_{anime_slug}.json`
+- **Structure:** 4–5 scenes, 40–55s total
+- **Scene 1** (~5s): hook — one surprising statement about the anime/character
+- **Scenes 2–4** (~10s each): explain the curiosidade with details
+- **Scene 5** (~5s): outro CTA — ask viewers to comment + follow
+- **Same `amv` field** as the main video (pointing to the correct AMV)
+- **Title** must contain `#Shorts`
+- **No `search_tags`** — frames already extracted
+- Pick a genuinely surprising fact (forbidden powers, hidden origins, story backstory, author intent, etc.)
+
+### Curiosidade Step 2: Generate Voice (with timestamps)
+```bash
+python scripts/generate_voice.py \
+  --script-path "{output_dir}/script/script_curiosity_{anime}.json" \
+  --output-dir "{output_dir}/short_curiosity_{anime}" \
+  --timestamps
+```
+
+### Curiosidade Step 3: Generate Kinetic Captions
+```bash
+python scripts/generate_captions.py \
+  --script-path "{output_dir}/script/script_curiosity_{anime}.json" \
+  --audio-dir "{output_dir}/short_curiosity_{anime}/audio" \
+  --output-dir "{output_dir}/short_curiosity_{anime}" \
+  --shorts
+```
+
+### Curiosidade Step 4: Compose Short
+```bash
+python scripts/compose_video.py \
+  --script-path "{output_dir}/script/script_curiosity_{anime}.json" \
+  --frames-dir "{output_dir}/amvN/frames" \
+  --audio-dir "{output_dir}/short_curiosity_{anime}/audio" \
+  --output-dir "{output_dir}/short_curiosity_{anime}" \
+  --bgm-path "{output_dir}/audio/bgm.mp3" \
+  --bgm-volume 0.15 \
+  --zoom-crop \
+  --shorts \
+  --amv-base-dir "{output_dir}" \
+  --captions-path "{output_dir}/short_curiosity_{anime}/audio/captions.ass"
+```
+
+### Curiosidade Step 5: Publish
+```bash
+python scripts/publish_youtube.py \
+  --script-path "{output_dir}/script/script_curiosity_{anime}.json" \
+  --video-path "{output_dir}/short_curiosity_{anime}/final/final_short.mp4" \
+  --thumbnail-path "{output_dir}/thumbnail/thumbnail.jpg" \
+  --privacy "public" \
+  --channel-id "UCyRJuLu9xr7mrRh-j52RQ9Q"
+```
 
 ---
 

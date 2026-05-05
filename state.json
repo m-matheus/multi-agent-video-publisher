@@ -46,22 +46,24 @@
         "step-04-voice-narration": {
           "started_at": "2026-04-29T13:13:32.658429+00:00",
           "status": "completed",
-          "completed_at": "2026-05-03T14:54:06.460626+00:00",
+          "completed_at": "2026-05-05T15:29:57.469664+00:00",
           "outputs": {
-            "narration_path": "output\\these-5-anime-turned-nonfans-20260502-1612\\short\\audio\\narration_full.mp3",
+            "narration_path": "output\\hidden-gems-missed-20260505\\short\\audio\\narration_full.mp3",
             "segment_durations": [
-              4.12734693877551,
+              3.474285714285714,
               1.1493877551020408,
-              8.359183673469389,
-              1.2277551020408164,
-              8.124081632653061,
-              1.0710204081632653,
-              8.51591836734694,
+              5.250612244897959,
+              1.1493877551020408,
+              4.989387755102041,
               0.9926530612244898,
-              9.404081632653062,
-              4.911020408163266
+              5.642448979591837,
+              1.1493877551020408,
+              6.844081632653062,
+              1.0710204081632653,
+              6.2693877551020405,
+              3.7877551020408164
             ],
-            "total_duration": 50.93877551020408
+            "total_duration": 45.50530612244898
           }
         },
         "step-06-thumbnail-creation": {
@@ -76,11 +78,11 @@
         "step-05-video-composition": {
           "started_at": "2026-04-29T13:25:53.641223+00:00",
           "status": "completed",
-          "completed_at": "2026-05-03T15:01:56.234217+00:00",
+          "completed_at": "2026-05-05T15:31:55.421114+00:00",
           "outputs": {
-            "video_path": "output\\these-5-anime-turned-nonfans-20260502-1612\\short\\final\\final_short.mp4",
-            "duration": 59.375,
-            "size_mb": 18.08
+            "video_path": "output\\hidden-gems-missed-20260505\\short\\final\\final_short.mp4",
+            "duration": 47.833333,
+            "size_mb": 10.66
           }
         },
         "step-02-image-generation": {
@@ -125,43 +127,43 @@
         "step-bgm-fetch": {
           "started_at": "2026-04-29T22:42:57.906279+00:00",
           "status": "completed",
-          "completed_at": "2026-05-02T19:42:30.378838+00:00",
+          "completed_at": "2026-05-05T13:56:52.157020+00:00",
           "outputs": {
-            "bgm_path": "output\\these-5-anime-turned-nonfans-20260502-1612\\audio\\bgm.mp3"
+            "bgm_path": "output\\hidden-gems-missed-20260505\\audio\\bgm.mp3"
           }
         },
         "fetch-amv": {
           "started_at": "2026-04-30T00:25:21.441929+00:00",
           "status": "completed",
           "outputs": {
-            "amv_path": "output\\these-5-anime-turned-nonfans-20260502-1612\\amv4\\amv\\amv_source.mp4",
-            "title": "Death Note ＡＭＶ - Alumina",
-            "duration_seconds": 298
+            "amv_path": "output\\hidden-gems-missed-20260505\\amv5\\amv\\amv_source.mp4",
+            "title": "Freak | Summer Time Rendering [ AMV ]",
+            "duration_seconds": 162
           },
-          "completed_at": "2026-05-02T19:14:53.990235+00:00"
+          "completed_at": "2026-05-05T13:28:26.755811+00:00"
         },
         "analyze-amv": {
           "started_at": "2026-04-30T00:39:38.931132+00:00",
           "status": "completed",
           "outputs": {
-            "analysis_path": "output\\these-5-anime-turned-nonfans-20260502-1612\\amv5\\amv\\amv_analysis.json",
+            "analysis_path": "output\\hidden-gems-missed-20260505\\amv5\\amv\\amv_analysis.json",
             "scene_count": 12,
-            "total_duration_seconds": 344.24
+            "total_duration_seconds": 161.87
           },
-          "completed_at": "2026-05-02T19:30:49.994823+00:00"
+          "completed_at": "2026-05-05T13:45:05.711466+00:00"
         },
         "step-07-youtube-publishing": {
           "started_at": "2026-04-30T16:13:31.568495+00:00",
           "status": "completed",
-          "completed_at": "2026-05-03T15:03:08.183219+00:00",
+          "completed_at": "2026-05-05T15:26:42.565696+00:00",
           "outputs": {
-            "video_id": "7akON4lvc4Q",
-            "url": "https://www.youtube.com/watch?v=7akON4lvc4Q",
-            "studio_url": "https://studio.youtube.com/video/7akON4lvc4Q/edit",
-            "privacy": "public",
+            "video_id": "prlGySYMr9k",
+            "url": "https://www.youtube.com/watch?v=prlGySYMr9k",
+            "studio_url": "https://studio.youtube.com/video/prlGySYMr9k/edit",
+            "privacy": "private",
             "publish_at": null,
             "channel_id": "UCyRJuLu9xr7mrRh-j52RQ9Q",
-            "title": "5 Anime That Convert Non-Fans #Shorts"
+            "title": "Top 5 Hidden Gem Anime That Nobody Talks About (But Should)"
           }
         }
       }
