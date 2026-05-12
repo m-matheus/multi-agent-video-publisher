@@ -113,9 +113,23 @@ def generate_segment_with_timestamps(text: str, voice_id: str, model_id: str, ap
 
 
 def get_audio_duration(file_path: Path) -> float:
-    from mutagen.mp3 import MP3
-    audio = MP3(str(file_path))
-    return audio.info.length
+    try:
+        from mutagen.mp3 import MP3
+        return MP3(str(file_path)).info.length
+    except Exception:
+        pass
+    import subprocess
+    import re
+    from scripts.utils.config import get_ffmpeg_path
+    result = subprocess.run(
+        [get_ffmpeg_path(), "-i", str(file_path)],
+        capture_output=True, text=True,
+    )
+    m = re.search(r"Duration:\s*(\d+):(\d+):([\d.]+)", result.stderr)
+    if m:
+        h, mn, s = int(m.group(1)), int(m.group(2)), float(m.group(3))
+        return h * 3600 + mn * 60 + s
+    raise RuntimeError(f"Could not determine duration of {file_path}")
 
 
 def concatenate_segments(segment_paths: list[Path], output_path: Path, gap_ms: int = 300) -> float:

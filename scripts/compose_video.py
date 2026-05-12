@@ -158,6 +158,20 @@ def make_intro_overlay_filters(font_path: str,
     return line1 + "," + line2
 
 
+def make_intro_hook_filter(font_path: str, text: str, start: float = 0.5, duration: float = 7.5) -> str:
+    """Large centered hook text for the intro scene (generic single-line hook)."""
+    esc_font = font_path.replace(":", "\\:")
+    safe_text = text.replace("'", "").replace(":", " ").replace("\\", "") if text else "WATCH TILL THE END"
+    enable = f"between(t\\,{start}\\,{start + duration})"
+    return (
+        f"drawtext=fontfile='{esc_font}':text='{safe_text}'"
+        f":fontcolor=white:fontsize=100"
+        f":x=(w-text_w)/2:y=(h/2-60)"
+        f":box=1:boxcolor=0x000000AA:boxborderw=22"
+        f":shadowx=5:shadowy=5:shadowcolor=black@1.0:enable='{enable}'"
+    )
+
+
 def make_cta_filter(font_path: str, start: float, duration: float) -> str:
     """Red 'LIKE & SUBSCRIBE' banner centered at the bottom."""
     esc_font = font_path.replace(":", "\\:")
@@ -430,7 +444,9 @@ def parse_args():
     parser.add_argument("--bgm-volume", type=float, default=0.15, help="BGM volume (0-1)")
     parser.add_argument("--srt-path", default=None, help="Optional SRT subtitle file to embed as a soft track")
     parser.add_argument("--endcard-path", default=None,
-                        help="Optional endcard image to append at the end of the video (e.g. channels/hakase-anime/assets/endcard.png)")
+                        help="Endcard image to append (auto-detected from channels/ if not set)")
+    parser.add_argument("--no-endcard", action="store_true",
+                        help="Disable endcard even if auto-detected")
     parser.add_argument("--endcard-duration", type=float, default=20.0,
                         help="Duration in seconds for the endcard clip (default: 20s)")
     parser.add_argument("--zoom-crop", action="store_true",
@@ -586,6 +602,7 @@ def create_scene_clip(
             elif style == "intro_hook":
                 drawtext = "," + make_intro_hook_filter(
                     font_path,
+                    text_overlay.get("text", ""),
                     text_overlay.get("start", 0.5), text_overlay.get("duration", 7.5),
                 )
             else:
@@ -871,6 +888,13 @@ def find_scene_files(frames_dir: Path) -> list[Path]:
 
 def main():
     args = parse_args()
+
+    # Auto-detect endcard if not explicitly provided
+    if not args.endcard_path and not args.no_endcard:
+        project_root = Path(__file__).parent.parent
+        default_endcard = project_root / "channels" / "hakase-anime" / "assets" / "endcard.png"
+        if default_endcard.exists():
+            args.endcard_path = str(default_endcard)
 
     script = json.loads(Path(args.script_path).read_text(encoding="utf-8"))
     output_dir = Path(args.output_dir)

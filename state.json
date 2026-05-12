@@ -46,24 +46,17 @@
         "step-04-voice-narration": {
           "started_at": "2026-04-29T13:13:32.658429+00:00",
           "status": "completed",
-          "completed_at": "2026-05-05T15:29:57.469664+00:00",
+          "completed_at": "2026-05-12T16:43:02.270660+00:00",
           "outputs": {
-            "narration_path": "output\\hidden-gems-missed-20260505\\short\\audio\\narration_full.mp3",
+            "narration_path": "output\\one-piece-top5-20260512\\short_curiosity_luffy\\audio\\narration_full.mp3",
             "segment_durations": [
-              3.474285714285714,
-              1.1493877551020408,
-              5.250612244897959,
-              1.1493877551020408,
-              4.989387755102041,
-              0.9926530612244898,
-              5.642448979591837,
-              1.1493877551020408,
-              6.844081632653062,
-              1.0710204081632653,
-              6.2693877551020405,
-              3.7877551020408164
+              4.911020408163266,
+              14.524081632653061,
+              12.120816326530612,
+              13.871020408163265,
+              4.440816326530612
             ],
-            "total_duration": 45.50530612244898
+            "total_duration": 51.226122448979595
           }
         },
         "step-06-thumbnail-creation": {
@@ -78,11 +71,11 @@
         "step-05-video-composition": {
           "started_at": "2026-04-29T13:25:53.641223+00:00",
           "status": "completed",
-          "completed_at": "2026-05-05T15:31:55.421114+00:00",
+          "completed_at": "2026-05-12T17:00:46.306806+00:00",
           "outputs": {
-            "video_path": "output\\hidden-gems-missed-20260505\\short\\final\\final_short.mp4",
-            "duration": 47.833333,
-            "size_mb": 10.66
+            "video_path": "output\\one-piece-top5-20260512\\short_curiosity_luffy\\final\\final_short.mp4",
+            "duration": 50.25,
+            "size_mb": 32.06
           }
         },
         "step-02-image-generation": {
@@ -127,43 +120,43 @@
         "step-bgm-fetch": {
           "started_at": "2026-04-29T22:42:57.906279+00:00",
           "status": "completed",
-          "completed_at": "2026-05-05T13:56:52.157020+00:00",
+          "completed_at": "2026-05-12T16:13:25.406766+00:00",
           "outputs": {
-            "bgm_path": "output\\hidden-gems-missed-20260505\\audio\\bgm.mp3"
+            "bgm_path": "output\\one-piece-top5-20260512\\audio\\bgm.mp3"
           }
         },
         "fetch-amv": {
           "started_at": "2026-04-30T00:25:21.441929+00:00",
           "status": "completed",
           "outputs": {
-            "amv_path": "output\\hidden-gems-missed-20260505\\amv5\\amv\\amv_source.mp4",
-            "title": "Freak | Summer Time Rendering [ AMV ]",
-            "duration_seconds": 162
+            "amv_path": "output\\one-piece-top5-20260512\\amv5\\amv\\amv_source.mp4",
+            "title": "LUFFY GEAR 5「AMV」- ROYALTY",
+            "duration_seconds": 219
           },
-          "completed_at": "2026-05-05T13:28:26.755811+00:00"
+          "completed_at": "2026-05-12T15:23:39.881771+00:00"
         },
         "analyze-amv": {
           "started_at": "2026-04-30T00:39:38.931132+00:00",
           "status": "completed",
           "outputs": {
-            "analysis_path": "output\\hidden-gems-missed-20260505\\amv5\\amv\\amv_analysis.json",
+            "analysis_path": "output\\one-piece-top5-20260512\\amv5\\amv\\amv_analysis.json",
             "scene_count": 12,
-            "total_duration_seconds": 161.87
+            "total_duration_seconds": 218.59
           },
-          "completed_at": "2026-05-05T13:45:05.711466+00:00"
+          "completed_at": "2026-05-12T15:54:16.417497+00:00"
         },
         "step-07-youtube-publishing": {
           "started_at": "2026-04-30T16:13:31.568495+00:00",
           "status": "completed",
-          "completed_at": "2026-05-05T15:26:42.565696+00:00",
+          "completed_at": "2026-05-12T17:17:57.988616+00:00",
           "outputs": {
-            "video_id": "prlGySYMr9k",
-            "url": "https://www.youtube.com/watch?v=prlGySYMr9k",
-            "studio_url": "https://studio.youtube.com/video/prlGySYMr9k/edit",
-            "privacy": "private",
+            "video_id": "WO1UKE1bUqM",
+            "url": "https://www.youtube.com/watch?v=WO1UKE1bUqM",
+            "studio_url": "https://studio.youtube.com/video/WO1UKE1bUqM/edit",
+            "privacy": "public",
             "publish_at": null,
             "channel_id": "UCyRJuLu9xr7mrRh-j52RQ9Q",
-            "title": "Top 5 Hidden Gem Anime That Nobody Talks About (But Should)"
+            "title": "Luffy's Devil Fruit Was NEVER Rubber — The Truth the World Government Hid #Shorts #OnePiece"
           }
         }
       }

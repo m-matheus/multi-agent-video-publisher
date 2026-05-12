@@ -5,11 +5,9 @@ You (Claude) are the **orchestrator** of this multi-agent pipeline. You generate
 
 ## How to Run a Video Generation
 
-When the user asks to generate a video (e.g., "create a video about...", "generate a video on..."), follow this pipeline:
-
 For **anime content**, the **AMV Workflow** is the default. Ask the user for a YouTube AMV URL unless they explicitly want to use Sakugabooru clips instead.
 
-If the user provides a **YouTube AMV URL** (or for anime by default), use the **AMV Workflow** below instead of the standard pipeline.
+---
 
 ### Step 1: Script Generation (YOU do this directly)
 1. Ask the user for the **topic** and **content type** (anime, bedtime-story, or amv) if not provided
@@ -47,21 +45,22 @@ python scripts/generate_voice.py --script-path "{output_dir}/script/script.json"
 ### Step 5: Fetch BGM (YOU choose the query)
 Based on the video topic and content type, choose a search query and run:
 ```bash
-python scripts/fetch_bgm.py --query "{bgm_query}" --output-dir "{output_dir}"
+python scripts/fetch_bgm.py --search "{bgm_query}" --output-dir "{output_dir}"
 ```
+This searches YouTube and downloads the top result audio.
 
 **BGM query selection guidelines:**
-- Anime action/fighting → `"epic anime orchestra action royalty free"`
-- Anime emotional/dramatic → `"emotional anime piano orchestral royalty free"`
-- Dragon Ball / power ranking → `"epic dragon ball orchestra royalty free"`
-- Naruto → `"naruto epic orchestral royalty free"`
-- Demon Slayer → `"demon slayer kimetsu orchestral royalty free"`
-- Bedtime story → `"gentle lullaby soft piano children royalty free"`
-- General anime → `"epic anime cinematic orchestra royalty free"`
+- Anime action/fighting → `"epic anime orchestra action no copyright"`
+- Anime emotional/dramatic → `"emotional anime piano orchestral no copyright"`
+- Dragon Ball / power ranking → `"epic dragon ball orchestra no copyright"`
+- Naruto → `"naruto epic orchestral no copyright"`
+- Demon Slayer → `"demon slayer kimetsu orchestral no copyright"`
+- Bedtime story → `"gentle lullaby soft piano children no copyright"`
+- General anime → `"epic anime cinematic orchestra no copyright"`
 
 ### Step 6: Compose Final Video
 ```bash
-python scripts/compose_video.py --script-path "{output_dir}/script/script.json" --frames-dir "{output_dir}/frames" --audio-dir "{output_dir}/audio" --output-dir "{output_dir}" --bgm-path "{output_dir}/audio/bgm.mp3" --bgm-volume 0.20
+python scripts/compose_video.py --script-path "{output_dir}/script/script.json" --frames-dir "{output_dir}/frames" --audio-dir "{output_dir}/audio" --output-dir "{output_dir}" --bgm-path "{output_dir}/audio/bgm.mp3" --bgm-volume 0.15
 ```
 
 The compositor handles:
@@ -69,11 +68,6 @@ The compositor handles:
 - GIFs: loops to fill duration
 - Static images: applies Ken Burns zoom/pan effect
 - All clips normalized to 1920x1080 @ 24fps
-
-### Step 6: Generate Thumbnail
-```bash
-python scripts/generate_thumbnail.py --script-path "{output_dir}/script/script.json" --output-dir "{output_dir}"
-```
 
 ### Step 7: CHECKPOINT — Approve Video
 - Report final video path, duration, file size
@@ -88,15 +82,40 @@ python scripts/publish_youtube.py --script-path "{output_dir}/script/script.json
 
 ## AMV Workflow (YouTube AMV as background)
 
-Use this workflow when the user provides a YouTube AMV URL. The pipeline is **inverted**: download and analyze first, then generate a script that fits the AMV's actual scene structure.
+Use this workflow when the user wants to create an anime video. The full pipeline from trend research to publish.
 
-### AMV Step 1: Download AMV
+### AMV Step 1: Trend Research
+Run both commands to understand the current landscape:
+```bash
+python scripts/analyze_trends.py --queries "anime power ranking" "top anime 2026" "hidden gem anime" --days 30 --output-file output/trends_cache.json
+```
+```bash
+python scripts/analyze_channel.py --days 90 --output-file output/channel_analytics.json --channel-id UCyRJuLu9xr7mrRh-j52RQ9Q
+```
+Read both output files. Use trends to find underserved topics (high views, few recent competitors). Use channel analytics to double-down on formats similar to top-performing videos.
+
+### AMV Step 2: CHECKPOINT — Suggest Themes
+- Propose 3–5 topic options based on trend + channel data
+- **Wait for user to pick a theme**
+- Once theme is chosen, tell the user exactly what AMV(s) to search for on YouTube (one per rank for Top N videos, with suggested search queries)
+- **Wait for user to return with AMV URL(s)** before proceeding
+
+### AMV Step 3: Download AMV(s)
+**Single AMV:**
 ```bash
 python scripts/fetch_amv.py --url "{youtube_url}" --output-dir "{output_dir}"
 ```
 Creates: `{output_dir}/amv/amv_source.mp4` and `amv/amv_metadata.json`
 
-### AMV Step 2: Analyze AMV
+**Multi-AMV (Top N videos):** download each into its own subdirectory:
+```bash
+python scripts/fetch_amv.py --url "{amv1_url}" --output-dir "{output_dir}/amv1"
+python scripts/fetch_amv.py --url "{amv2_url}" --output-dir "{output_dir}/amv2"
+# ...one per rank
+```
+
+### AMV Step 4: Analyze AMV(s)
+**Single AMV:**
 ```bash
 python scripts/analyze_amv.py --amv-path "{output_dir}/amv/amv_source.mp4" --output-dir "{output_dir}"
 ```
@@ -106,71 +125,99 @@ python scripts/analyze_amv.py --amv-path "{output_dir}/amv/amv_source.mp4" --out
 - Splits the AMV into `frames/scene_01.mp4`, `frames/scene_02.mp4`, etc.
 - Creates: `{output_dir}/amv/amv_analysis.json`
 
+**Multi-AMV:** analyze each in parallel:
+```bash
+python scripts/analyze_amv.py --amv-path "{output_dir}/amv1/amv/amv_source.mp4" --output-dir "{output_dir}/amv1"
+python scripts/analyze_amv.py --amv-path "{output_dir}/amv2/amv/amv_source.mp4" --output-dir "{output_dir}/amv2"
+# ...one per AMV
+```
+
 Optional flags: `--max-scenes 12` (default), `--min-scene-duration 3.0` (default, seconds)
 
-### AMV Step 3: CHECKPOINT — Show AMV Analysis
-- Read `{output_dir}/amv/amv_analysis.json`
-- Present: total duration, number of scenes, brief description of each scene
-- Ask the user for the **video topic/angle** (e.g., "narrate this as a Dragon Ball power ranking")
+### AMV Step 5: CHECKPOINT — Review Clips
+- Tell the user to open each `amvN/frames/` folder and watch the clips
+- User deletes any clips they don't want used in the video
+- **Wait for user confirmation** before proceeding to script generation
+- After confirmation, list how many clips remain per AMV so the user can verify
+
+### AMV Step 6: CHECKPOINT — Show AMV Analysis
+- Read all `amv_analysis.json` files
+- Present: total duration, number of scenes, brief description of each scene per AMV
+- Ask the user for the **video topic/angle** (e.g., "narrate this as a One Piece power ranking")
 - Wait for user confirmation before generating the script
 
-### AMV Step 4: Generate Script from AMV Analysis (YOU do this)
-Read `amv_analysis.json` and generate `script.json` where:
-- **`scenes` count** = `amv_analysis.scene_count` (do NOT invent extra scenes)
-- **`duration_seconds`** per scene = `amv_analysis.scenes[i].duration_seconds` (taken directly from the analysis)
-- **`target_duration_seconds`** = `amv_analysis.total_duration`
-- **`narration_text`** = engaging commentary/narration that fits the scene's mood and visual description
-- **`visual_prompt`** = reuse or rephrase the scene's `description` from the analysis
-- **`content_type`** = `"anime"` (AMV content is always anime)
-- **Omit `search_tags`** — frames are already in `frames/`, no clip fetching needed
+### AMV Step 7: Generate Script from AMV Analysis (YOU do this)
+Read the analysis file(s) and generate `script.json`. For **multi-AMV**:
+- Use the `amv` field (1–N) to route each scene to the correct AMV's clip pool
+- Scene durations should match the content rhythm (not necessarily the raw clip durations)
+- Narration drives the pacing — the compositor extends scenes to fit TTS audio
+- **Optionally** assign `clip_index` to pin specific clips to scenes for precise editing
 
 Write to `{output_dir}/script/script.json` and show the script summary.
 
-### AMV Step 5: CHECKPOINT — Approve Script
+For **single AMV**, scene structure follows the analysis:
+- `duration_seconds` per scene ≈ clip durations from analysis (compositor auto-extends for TTS)
+- `content_type` = `"amv"`
+- Omit `search_tags` — frames are already in `frames/`
+
+### AMV Step 8: CHECKPOINT — Approve Script
 - Present: title, number of scenes, total duration, narration preview
 - User can request tone/topic changes — regenerate narration if needed
-- Do NOT change scene durations (they come from the AMV)
 
-### AMV Step 6: Generate Voice Narration
+### AMV Step 9: Generate Voice Narration
 ```bash
 python scripts/generate_voice.py --script-path "{output_dir}/script/script.json" --output-dir "{output_dir}"
 ```
 
-### AMV Step 7: Fetch BGM (YOU choose the query)
-Based on the video topic and AMV mood, choose a search query and run:
+### AMV Step 10: Fetch BGM (YouTube only)
 ```bash
-python scripts/fetch_bgm.py --query "{bgm_query}" --output-dir "{output_dir}"
+python scripts/fetch_bgm.py --search "{bgm_query}" --output-dir "{output_dir}"
 ```
-Use the same BGM query guidelines from the standard workflow above.
+Use the BGM query guidelines from the standard workflow above. Always use `--search` (YouTube).
 
-### AMV Step 8: Compose Final Video
+### AMV Step 11: Compose Final Video
+**Single AMV:**
 ```bash
-python scripts/compose_video.py --script-path "{output_dir}/script/script.json" --frames-dir "{output_dir}/frames" --audio-dir "{output_dir}/audio" --output-dir "{output_dir}" --bgm-path "{output_dir}/audio/bgm.mp3" --bgm-volume 0.20 --zoom-crop --amv-base-dir "{output_dir}"
+python scripts/compose_video.py \
+  --script-path "{output_dir}/script/script.json" \
+  --frames-dir "{output_dir}/frames" \
+  --audio-dir "{output_dir}/audio" \
+  --output-dir "{output_dir}" \
+  --bgm-path "{output_dir}/audio/bgm.mp3" \
+  --bgm-volume 0.15 \
+  --zoom-crop
 ```
 
-**Multi-AMV workflow (per-anime clip routing):**
-- When the video covers multiple anime series (e.g. "Top 5"), download each AMV into its own subdirectory: `{output_dir}/amv1/`, `amv2/`, etc. Analyze each AMV separately so frames land in `amv1/frames/`, `amv2/frames/`, etc.
-- Add an `"amv": N` field to each scene in `script.json` to declare which AMV's clips to use for that scene.
-- Pass `--amv-base-dir "{output_dir}"` to `compose_video.py` — it will automatically route each scene to the correct `amvN/frames/` pool and cycle through that AMV's clips in order.
-- `--zoom-crop` scales clips 12% larger and crops from the top-left corner, removing bottom-right watermarks.
-- The global `--frames-dir` is still required as a fallback for scenes without an `amv` field.
-
-### AMV Step 9: Generate Thumbnail
+**Multi-AMV (Top N):**
 ```bash
-python scripts/generate_thumbnail.py --script-path "{output_dir}/script/script.json" --output-dir "{output_dir}" --highlight-frame "{output_dir}/amvN/frames/scene_07.mp4"
+python scripts/compose_video.py \
+  --script-path "{output_dir}/script/script.json" \
+  --frames-dir "{output_dir}/amv1/frames" \
+  --audio-dir "{output_dir}/audio" \
+  --output-dir "{output_dir}" \
+  --bgm-path "{output_dir}/audio/bgm.mp3" \
+  --bgm-volume 0.15 \
+  --zoom-crop \
+  --amv-base-dir "{output_dir}"
 ```
-Use `--highlight-frame` to select a specific AMV scene that has strong visual impact. Scene 7 at second 5 is a good default — adjust based on the AMV content.
 
-### AMV Step 10: CHECKPOINT — Approve Video
+The compositor automatically:
+- Routes scenes to `amvN/frames/` based on the `amv` field in script.json
+- Uses `clip_index` if specified, otherwise cycles clips in order
+- **Never cuts narration** — extends scene duration to fit full TTS audio
+- **Always appends end card** (auto-detected from `channels/hakase-anime/assets/endcard.png`)
+- Applies `--zoom-crop` (12% scale + crop to remove watermarks)
+
+### AMV Step 12: CHECKPOINT — Approve Video
 - Report final video path, duration, file size
 - Wait for user approval before publishing
 
-### AMV Step 11: Publish to YouTube
+### AMV Step 13: Publish to YouTube
 ```bash
 python scripts/publish_youtube.py --script-path "{output_dir}/script/script.json" --video-path "{output_dir}/final/final_video.mp4" --thumbnail-path "{output_dir}/thumbnail/thumbnail.jpg" --privacy "private" --channel-id "UCyRJuLu9xr7mrRh-j52RQ9Q"
 ```
 
-### AMV Step 12: Post-Publish Steps
+### AMV Step 14: Post-Publish Steps
 After the video is uploaded (still private), do all of these before making it public:
 
 1. **Update description with chapters** — add YouTube chapter timestamps so the progress bar shows named segments:
@@ -187,6 +234,16 @@ After the video is uploaded (still private), do all of these before making it pu
 3. **Make video public** — call `videos.update` with `status.privacyStatus = "public"`.
 
 4. **Post engagement comment** — use `commentThreads.insert` to post a pinned comment in English asking viewers to engage (e.g., "Which anime from this list is your favorite? Drop it in the comments! 👇"). Then ask the user to go to YouTube Studio and pin it, as the API cannot pin comments directly.
+
+5. **Generate community post** — run the community post generator and open YouTube Studio:
+   ```bash
+   python scripts/post_community.py \
+     --script-path "{output_dir}/script/script.json" \
+     --video-id "{video_id}" \
+     --output-dir "{output_dir}" \
+     --channel-id "UCyRJuLu9xr7mrRh-j52RQ9Q"
+   ```
+   This generates an English community post with a poll, prints the text to console, and opens YouTube Studio Community tab. Copy the `post_text` and create the poll manually — the API cannot create community posts directly.
 
 **Note:** OAuth scope `youtube.force-ssl` is required for posting comments. If authentication fails, delete `.youtube_credentials.json` and re-authenticate.
 
@@ -208,6 +265,7 @@ When generating the script, produce this exact JSON structure:
       "rank": 5,
       "name": "Anime Title",
       "amv": 1,
+      "clip_index": 3,
       "duration_seconds": 8.0,
       "visual_prompt": "Detailed scene description for image/clip search",
       "narration_text": "Text spoken aloud during this scene",
@@ -222,6 +280,7 @@ When generating the script, produce this exact JSON structure:
 - `rank`: integer, used on `rank_transition` scenes and on character scenes to indicate which rank is being narrated
 - `name`: **required on `rank_transition` scenes** — the anime title to display on the rank card (e.g., `"Jujutsu Kaisen"`). The compositor renders it above the gold rank number.
 - `amv`: integer (1–N), used in multi-AMV videos to route this scene's clips to the correct `amvN/frames/` pool
+- `clip_index`: 0-based index into the sorted list of available clips for that AMV. Use to pin specific clips to a scene. Wraps via modulo if index exceeds clip count.
 - All fields except `scene_number`, `duration_seconds`, `narration_text` are optional
 
 ### The `search_tags` field
@@ -241,10 +300,11 @@ When content_type is "amv", **omit `search_tags`** — frames are already extrac
 
 ### For AMV:
 - Narration must match the real visual content of each AMV segment (use the `description` from `amv_analysis.json`)
-- Scene durations are fixed — taken directly from the AMV's natural cuts
+- Scene durations are a starting point — the compositor auto-extends scenes to fit TTS audio
 - Write engaging commentary: power rankings, character analysis, "what if" scenarios, storytelling
 - Match narration energy to the scene's mood (intense = fast-paced, emotional = slower)
 - Do NOT generate `search_tags` — frames are already split and in `frames/`
+- rank_transition scenes MUST have short narration_text (e.g., `"Number five."`) for rank card sync
 
 ### For Anime:
 - Dramatic, cinematic narratives with strong visual hooks
@@ -261,7 +321,7 @@ Scene 1:    scene_type="intro",           ~7s,  broad tags ("effects animated fi
 Scene 2:    scene_type="normal",          ~5s,  hook narration introducing the list, broad tags, amv=<varied>
 
 For each rank from N down to 1:
-  Scene X:    scene_type="rank_transition", ~2.5s, rank=N, name="<Anime Title>"
+  Scene X:    scene_type="rank_transition", ~2.5s, rank=N, name="<Anime Title>", narration_text="Number N."
   Scene X+1:  scene_type="normal",          ~8s,   rank=N, series-specific tags, amv=N, character intro
   Scene X+2:  scene_type="normal",          ~7s,   rank=N, series-specific tags, amv=N, why they rank here
 
@@ -273,6 +333,8 @@ Last scene: scene_type="normal", ~14s, outro narration (CTA overlay auto-added b
 **Last scene duration**: Set the last scene's `duration_seconds` to at least the TTS narration length + 2s buffer. A safe default is 14s.
 
 **`name` field on rank transitions**: Always include `"name": "<Anime Title>"` on every `rank_transition` scene. The compositor renders the anime title above the gold rank number on the black card.
+
+**Rank transition narration sync**: Every `rank_transition` scene MUST have a short `narration_text` (e.g., `"Number five."`, `"Number one."`) so the rank card reveal syncs with the audio announcement. The compositor holds the rank card until TTS finishes.
 
 **Per-rank `search_tags` rule**: Every normal scene narrating a character MUST use that character's series-specific tags. All scenes within the same rank must share the same series tags. Examples:
 - Rank about Alucard (Hellsing) → `hellsing animated` for all scenes in that rank
@@ -309,67 +371,31 @@ Last scene: scene_type="normal", ~14s, outro narration (CTA overlay auto-added b
 
 ---
 
-## Shorts Workflow (companion Short for any video)
+## Companion Short (Curiosidade) — Default After Every Video
 
-After the main video is approved, always offer to generate a companion YouTube Short (30s vertical). The Short reuses the same AMV frames already downloaded — no extra downloads needed.
+After the main video is approved and published, **always** offer to generate a companion Curiosidade Short — a 40–55s vertical Short about one surprising fact related to one of the anime featured in the main video. This is the standard companion content, not a mini-summary.
 
-### Shorts Step 1: Generate script_short.json (YOU do this)
-- Write to `{output_dir}/script/script_short.json`
-- **Structure:** 1 intro scene (~4s) + 1 rank_transition + 1 normal per rank + 1 outro with CTA (~5s)
-- **Total:** ≤ 30s
-- **Narration:** Very short, punchy — 1–2 sentences max per scene
-- **Same `amv` routing** as the main video
-- **Title** must contain `#Shorts` (YouTube detection)
-- **No `search_tags`** — frames already extracted
+### AMV Decision Checkpoint
 
-### Shorts Step 2: Generate Voice (with word timestamps)
-```bash
-python scripts/generate_voice.py --script-path "{output_dir}/script/script_short.json" --output-dir "{output_dir}/short" --timestamps
-```
+Before starting, ask the user:
+> "Which anime from the main video should the curiosidade Short feature? I can use the existing frames from `amv{N}/frames/`. Would you prefer to use a new AMV for this Short?"
 
-### Shorts Step 2b: Generate Kinetic Captions
-```bash
-python scripts/generate_captions.py \
-  --script-path "{output_dir}/script/script_short.json" \
-  --audio-dir "{output_dir}/short/audio" \
-  --output-dir "{output_dir}/short" \
-  --shorts
-```
+- **Use existing frames** → proceed directly with frames already in `{output_dir}/amvN/frames/`
+- **New AMV** (user provides URL) → download and analyze first:
+  ```bash
+  python scripts/fetch_amv.py --url "{new_amv_url}" --output-dir "{output_dir}/amv_curiosity"
+  python scripts/analyze_amv.py --amv-path "{output_dir}/amv_curiosity/amv/amv_source.mp4" --output-dir "{output_dir}/amv_curiosity"
+  ```
+  Then use `--frames-dir "{output_dir}/amv_curiosity/frames"` and `--amv-base-dir "{output_dir}/amv_curiosity"` in the compose step.
 
-### Shorts Step 3: Compose Short (vertical 1080×1920)
-```bash
-python scripts/compose_video.py \
-  --script-path "{output_dir}/script/script_short.json" \
-  --frames-dir "{output_dir}/amv1/frames" \
-  --audio-dir "{output_dir}/short/audio" \
-  --output-dir "{output_dir}/short" \
-  --bgm-path "{output_dir}/audio/bgm.mp3" \
-  --bgm-volume 0.15 \
-  --zoom-crop \
-  --shorts \
-  --amv-base-dir "{output_dir}" \
-  --captions-path "{output_dir}/short/audio/captions.ass"
-```
-Output: `{output_dir}/short/final/final_short.mp4`
+### Caption Color Selection
 
-### Shorts Step 4: Publish
-```bash
-python scripts/publish_youtube.py \
-  --script-path "{output_dir}/script/script_short.json" \
-  --video-path "{output_dir}/short/final/final_short.mp4" \
-  --thumbnail-path "{output_dir}/thumbnail/thumbnail.jpg" \
-  --privacy "public" \
-  --channel-id "UCyRJuLu9xr7mrRh-j52RQ9Q"
-```
-Shorts can go public immediately (no endcard, no chapter timestamps needed).
-
----
-
-## Curiosidade Shorts Workflow
-
-After the main video is published, offer to generate N companion "Curiosidade" Shorts — one per anime featured. Each Short covers one surprising/interesting fact about that anime/character (~40–55s vertical).
-
-These use the **already-downloaded AMV frames** — no extra downloads needed.
+Before generating captions, choose `--color` based on the anime's mood:
+- Action/fighting → `yellow` or `orange`
+- Dramatic/emotional → `white`
+- Sci-fi/futuristic → `cyan`
+- Horror/dark → `red`
+- Default → `yellow`
 
 ### Curiosidade Step 1: Generate script_curiosity_{anime}.json (YOU do this)
 - Write to `{output_dir}/script/script_curiosity_{anime_slug}.json`
@@ -396,8 +422,10 @@ python scripts/generate_captions.py \
   --script-path "{output_dir}/script/script_curiosity_{anime}.json" \
   --audio-dir "{output_dir}/short_curiosity_{anime}/audio" \
   --output-dir "{output_dir}/short_curiosity_{anime}" \
-  --shorts
+  --shorts \
+  --color {chosen_color}
 ```
+Choose `--color` based on the anime mood (see color selection guide above). Default: `yellow`.
 
 ### Curiosidade Step 4: Compose Short
 ```bash
@@ -434,6 +462,10 @@ python scripts/publish_youtube.py \
 - Report progress after each step completes
 - If a step fails, inform the user and offer to retry or skip
 - For anime content: accept that Content ID claims may occur (not strikes)
+- **NEVER cut narration** — if TTS is longer than scene duration, the compositor extends the scene automatically
+- **ALWAYS include end card** — auto-detected from `channels/hakase-anime/assets/endcard.png` (use `--no-endcard` only if explicitly requested)
+- **ALWAYS sync rank card with audio** — rank_transition scenes must have narration_text so the card reveal syncs with the spoken announcement
+- **BGM from YouTube only** — always use `--search` flag with `fetch_bgm.py`, never `--query` (Freesound deprecated)
 
 ## Environment
 - Ensure `.env` is configured with API keys before running agent scripts
