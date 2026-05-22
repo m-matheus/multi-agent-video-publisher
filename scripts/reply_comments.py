@@ -45,8 +45,10 @@ def parse_args():
                         help="Limit to a single video ID instead of scanning recent videos")
     parser.add_argument("--max-comments", type=int, default=20,
                         help="Max number of comments to process per run (default: 20)")
-    parser.add_argument("--recent-videos", type=int, default=10,
-                        help="Number of recent videos to scan when --video-id is not set (default: 10)")
+    parser.add_argument("--recent-videos", type=int, default=None,
+                        help="Limit scan to N most recent videos instead of the full channel")
+    parser.add_argument("--all-videos", action="store_true", default=True,
+                        help="Scan every video on the channel (default behavior)")
     parser.add_argument("--post", action="store_true",
                         help="Actually post replies. Without this flag, runs in dry-run mode.")
     parser.add_argument("--state-file", default=str(DEFAULT_STATE_FILE),
@@ -91,6 +93,30 @@ def fetch_recent_video_ids(youtube, channel_id: str, max_results: int) -> list[t
         title = item["snippet"]["title"]
         if vid:
             videos.append((vid, title))
+    return videos
+
+
+def fetch_all_video_ids(youtube, channel_id: str) -> list[tuple[str, str]]:
+    """Returns (video_id, title) for every video on the channel via uploads playlist."""
+    # Get uploads playlist ID (1 quota unit)
+    ch = youtube.channels().list(part="contentDetails", id=channel_id).execute()
+    uploads_id = ch["items"][0]["contentDetails"]["relatedPlaylists"]["uploads"]
+
+    videos = []
+    page_token = None
+    while True:
+        kwargs = dict(playlistId=uploads_id, part="snippet", maxResults=50)
+        if page_token:
+            kwargs["pageToken"] = page_token
+        resp = youtube.playlistItems().list(**kwargs).execute()
+        for item in resp.get("items", []):
+            vid = item["snippet"]["resourceId"].get("videoId")
+            title = item["snippet"]["title"]
+            if vid:
+                videos.append((vid, title))
+        page_token = resp.get("nextPageToken")
+        if not page_token:
+            break
     return videos
 
 
@@ -251,9 +277,13 @@ def main():
         video_title = fetch_video_title(youtube, args.video_id)
         videos = [(args.video_id, video_title)]
         print(f"Scanning 1 video: {video_title}")
-    else:
+    elif args.recent_videos:
         print(f"Fetching {args.recent_videos} most recent videos...")
         videos = fetch_recent_video_ids(youtube, channel_id, args.recent_videos)
+        print(f"Found {len(videos)} videos.")
+    else:
+        print("Fetching all channel videos...")
+        videos = fetch_all_video_ids(youtube, channel_id)
         print(f"Found {len(videos)} videos.")
 
     # Collect unreplied comments across all videos

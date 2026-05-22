@@ -77,7 +77,8 @@
       "Bash(python scripts/compose_video.py --script-path output/top10-broken-abilities-20260429/script/script.json --frames-dir output/top10-broken-abilities-20260429/frames --audio-dir output/top10-broken-abilities-20260429/audio --output-dir output/top10-broken-abilities-20260429)",
       "Bash(python scripts/generate_thumbnail.py --script-path output/top10-broken-abilities-20260429/script/script.json --output-dir output/top10-broken-abilities-20260429)",
       "Bash(python scripts/generate_voice.py --script-path \"output/top10-broken-abilities-20260429/script/script.json\" --output-dir \"output/top10-broken-abilities-20260429\")",
-      "Bash(python scripts/compose_video.py --script-path \"output/top10-broken-abilities-20260429/script/script.json\" --frames-dir \"output/top10-broken-abilities-20260429/frames\" --audio-dir \"output/top10-broken-abilities-20260429/audio\" --output-dir \"output/top10-broken-abilities-20260429\")"
+      "Bash(python scripts/compose_video.py --script-path \"output/top10-broken-abilities-20260429/script/script.json\" --frames-dir \"output/top10-broken-abilities-20260429/frames\" --audio-dir \"output/top10-broken-abilities-20260429/audio\" --output-dir \"output/top10-broken-abilities-20260429\")",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d, indent=2\\)\\)\")"
     ]
   }
 }

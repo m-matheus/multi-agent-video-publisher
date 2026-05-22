@@ -20,6 +20,17 @@ For **anime content**, the **AMV Workflow** is the default. Ask the user for a Y
 - Wait for user approval before proceeding
 - User can request changes — regenerate if needed
 
+### Step 2b: Generate Thumbnail
+```bash
+python scripts/generate_thumbnail.py \
+    --script-path "{output_dir}/script/script.json" \
+    --output-dir "{output_dir}"
+```
+- Uses GPT-4o to write a detailed image prompt (YouTube best practices + anime's own visual style)
+- Generates 1536x1024 image via gpt-image-1, resizes to 1280x720 JPEG
+- Output: `{output_dir}/thumbnail/thumbnail.jpg`
+- Can run in parallel with Step 3 and Step 4
+
 ### Step 3: Fetch Anime Frames/Clips
 For **anime content** using real frames:
 ```bash
@@ -163,6 +174,18 @@ For **single AMV**, scene structure follows the analysis:
 ### AMV Step 8: CHECKPOINT — Approve Script
 - Present: title, number of scenes, total duration, narration preview
 - User can request tone/topic changes — regenerate narration if needed
+
+### AMV Step 8b: Generate Thumbnail
+```bash
+python scripts/generate_thumbnail.py \
+    --script-path "{output_dir}/script/script.json" \
+    --output-dir "{output_dir}"
+```
+- Uses GPT-4o to write a detailed image prompt (YouTube best practices + anime's own visual style)
+- #1 ranked character becomes the focal point of the thumbnail automatically
+- Generates 1536x1024 image via gpt-image-1, resizes to 1280x720 JPEG
+- Output: `{output_dir}/thumbnail/thumbnail.jpg`
+- Can run in parallel with AMV Step 9
 
 ### AMV Step 9: Generate Voice Narration
 ```bash
