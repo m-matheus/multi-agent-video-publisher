@@ -3,12 +3,14 @@ YouTube trend analysis — searches for trending anime videos to inform topic se
 
 Usage:
     python scripts/analyze_trends.py \
-        --queries "anime power ranking" "top anime 2026" \
+        --queries "top 5 strongest anime characters" "anime power ranking" \
         --days 30 \
+        --min-duration 60 \
         --output-file output/trends_cache.json
 """
 import argparse
 import json
+import re
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -16,6 +18,45 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from scripts.utils.config import load_config
 from scripts.utils.youtube_auth import get_youtube_client
+
+# Keywords that identify content we don't produce — excluded by default
+DEFAULT_EXCLUDE_KEYWORDS = [
+    "edit", "edits", "editing",
+    "cosplay",
+    "gaming", "game", "roblox",
+    "hindi", "dubbed",
+    "meme", "memes",
+    "reaction", "reacts",
+    "amv",
+    "wallpaper", "soundtrack", "ost",
+    "speedpaint", "drawing",
+]
+
+
+def parse_duration_seconds(iso: str) -> int:
+    """Convert ISO 8601 duration (PT1M30S) to total seconds."""
+    if not iso:
+        return 0
+    match = re.match(r"PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?", iso)
+    if not match:
+        return 0
+    hours = int(match.group(1) or 0)
+    minutes = int(match.group(2) or 0)
+    seconds = int(match.group(3) or 0)
+    return hours * 3600 + minutes * 60 + seconds
+
+
+def is_relevant(title: str, duration_seconds: int, exclude_keywords: list[str],
+                min_duration: int, max_duration: int) -> bool:
+    title_lower = title.lower()
+    for kw in exclude_keywords:
+        if kw in title_lower:
+            return False
+    if min_duration and duration_seconds < min_duration:
+        return False
+    if max_duration and duration_seconds > max_duration:
+        return False
+    return True
 
 
 def search_videos(youtube, query: str, days: int, max_results: int = 10) -> list[dict]:
@@ -60,8 +101,10 @@ def fetch_video_stats(youtube, video_ids: list[str]) -> dict[str, dict]:
     return stats
 
 
-def run_trend_analysis(queries: list[str], days: int, config: dict) -> dict:
-    """Run trend analysis for all queries and return deduplicated, views-sorted results."""
+def run_trend_analysis(queries: list[str], days: int, config: dict,
+                       exclude_keywords: list[str], min_duration: int,
+                       max_duration: int) -> dict:
+    """Run trend analysis for all queries and return deduplicated, filtered, views-sorted results."""
     if len(queries) > 10:
         print("ERROR: Too many queries (>10 = >1000 quota units). Reduce the number of queries.")
         sys.exit(1)
@@ -87,36 +130,61 @@ def run_trend_analysis(queries: list[str], days: int, config: dict) -> dict:
     stats = fetch_video_stats(youtube, list(all_videos.keys()))
 
     videos = []
+    excluded = 0
     for vid_id, item in all_videos.items():
         s = stats.get(vid_id, {})
+        duration_iso = s.get("duration_iso", "")
+        duration_seconds = parse_duration_seconds(duration_iso)
+
+        if not is_relevant(item["title"], duration_seconds, exclude_keywords, min_duration, max_duration):
+            excluded += 1
+            continue
+
         videos.append({
             "video_id": vid_id,
             "title": item["title"],
             "channel": item["channel"],
             "views": s.get("views", 0),
             "publish_date": item["publish_date"],
-            "duration_iso": s.get("duration_iso", ""),
+            "duration_seconds": duration_seconds,
+            "duration_iso": duration_iso,
             "url": f"https://www.youtube.com/watch?v={vid_id}",
             "thumbnail": item["thumbnail"],
         })
+
+    if excluded:
+        print(f"  Filtered out {excluded} irrelevant videos (edits, cosplay, gaming, etc.)")
 
     videos.sort(key=lambda v: v["views"], reverse=True)
 
     return {
         "fetched_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "queries": queries,
+        "filters": {
+            "exclude_keywords": exclude_keywords,
+            "min_duration_seconds": min_duration,
+            "max_duration_seconds": max_duration,
+        },
         "videos": videos,
     }
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Search YouTube for trending anime videos")
+    parser = argparse.ArgumentParser(description="Search YouTube for trending anime narrated videos")
     parser.add_argument("--queries", nargs="+", required=True,
-                        help="Search queries (e.g. 'anime power ranking' 'top anime 2026')")
+                        help="Search queries targeting narrated content")
     parser.add_argument("--days", type=int, default=30,
                         help="Look back N days (default: 30)")
     parser.add_argument("--max-results", type=int, default=10,
                         help="Max results per query (default: 10)")
+    parser.add_argument("--min-duration", type=int, default=60,
+                        help="Minimum video duration in seconds (default: 60, excludes Shorts)")
+    parser.add_argument("--max-duration", type=int, default=0,
+                        help="Maximum video duration in seconds (default: 0 = no limit)")
+    parser.add_argument("--exclude-keywords", nargs="*", default=None,
+                        help="Title keywords to exclude (default: edits, cosplay, gaming, etc.)")
+    parser.add_argument("--no-default-exclusions", action="store_true",
+                        help="Disable the default keyword exclusion list")
     parser.add_argument("--output-file", default="output/trends_cache.json",
                         help="Output JSON file (default: output/trends_cache.json)")
     return parser.parse_args()
@@ -128,6 +196,14 @@ def main():
 
     output_path = Path(args.output_file)
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Build exclusion list
+    if args.no_default_exclusions:
+        exclude_keywords = args.exclude_keywords or []
+    else:
+        exclude_keywords = list(DEFAULT_EXCLUDE_KEYWORDS)
+        if args.exclude_keywords:
+            exclude_keywords.extend(args.exclude_keywords)
 
     # Load existing cache so results accumulate across runs
     cached_videos: dict[str, dict] = {}
@@ -141,7 +217,16 @@ def main():
             pass
 
     print(f"Analyzing trends for {len(args.queries)} queries over the last {args.days} days...")
-    result = run_trend_analysis(args.queries, args.days, config)
+    if args.min_duration:
+        print(f"  Filter: min duration {args.min_duration}s (excluding Shorts)")
+    print(f"  Filter: excluding keywords — {', '.join(exclude_keywords[:8])}{'...' if len(exclude_keywords) > 8 else ''}")
+
+    result = run_trend_analysis(
+        args.queries, args.days, config,
+        exclude_keywords=exclude_keywords,
+        min_duration=args.min_duration,
+        max_duration=args.max_duration,
+    )
 
     # Merge: new results override stale cached entries by video_id
     merged: dict[str, dict] = {**cached_videos}
@@ -152,13 +237,15 @@ def main():
     output_path.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
 
     print(f"\nTrend analysis saved: {output_path}")
-    print(f"Found {len(result['videos'])} unique videos (including cache).")
+    print(f"Found {len(result['videos'])} relevant videos (including cache).")
     if result["videos"]:
-        print("\nTop 5 by views:")
-        for v in result["videos"][:5]:
+        print("\nTop 10 by views:")
+        for v in result["videos"][:10]:
             views_fmt = f"{v['views']:,}"
-            title = v['title'][:60]
-            print(f"  {views_fmt:>12} views  {v['publish_date']}  {title}")
+            dur = v.get("duration_seconds", 0)
+            dur_str = f"{dur//60}m{dur%60:02d}s" if dur else "?"
+            title = v["title"][:55]
+            print(f"  {views_fmt:>12} views  {dur_str:>7}  {v['publish_date']}  {title}")
 
 
 if __name__ == "__main__":

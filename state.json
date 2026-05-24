@@ -46,36 +46,36 @@
         "step-04-voice-narration": {
           "started_at": "2026-04-29T13:13:32.658429+00:00",
           "status": "completed",
-          "completed_at": "2026-05-21T21:36:53.605387+00:00",
+          "completed_at": "2026-05-24T21:30:43.416793+00:00",
           "outputs": {
-            "narration_path": "output\\blue-lock-top5\\short_curiosity_rin\\audio\\narration_full.mp3",
+            "narration_path": "output\\black-clover-top5-20260524\\short_curiosity_julius\\audio\\narration_full.mp3",
             "segment_durations": [
-              6.765714285714286,
-              9.168979591836734,
-              13.165714285714285,
-              15.22938775510204,
-              8.751020408163265
+              10.109387755102041,
+              12.120816326530612,
+              17.240816326530613,
+              13.479183673469388,
+              7.314285714285714
             ],
-            "total_duration": 54.43918367346939
+            "total_duration": 61.62285714285714
           }
         },
         "step-06-thumbnail-creation": {
           "started_at": "2026-04-29T13:13:34.704113+00:00",
           "status": "completed",
-          "completed_at": "2026-05-21T23:36:37.589143+00:00",
+          "completed_at": "2026-05-24T19:54:04.045462+00:00",
           "outputs": {
-            "thumbnail_path": "output\\blue-lock-top5\\thumbnail\\thumbnail.jpg",
-            "request": "Create a viral YouTube thumbnail for a video titled \"Top 5 Blue Lock Players Who Could Make It in REAL Football\".\nThe main character should be Rin Itoshi (rank #1), with an intense and aggressive expression, filling most of the frame.\nThe video features these characters in order: Bachira Meguru, Isagi Yoichi, Nagi Seishiro, Sae Itoshi, Rin Itoshi.\nScene mood: Packed stadium, Blue Lock match in full swing, dramatic action and intense player expressions.\nMake it look like a professional anime YouTube thumbnail with bold text, dramatic lighting, anime-accurate art style, and high contrast. Use the visual identity and color palette of the featured anime. Include 2-3 bold words of text from the title, fully visible and never cropped. Do NOT include any character names, labels, or ranking numbers on the image."
+            "thumbnail_path": "output\\black-clover-top5-20260524\\thumbnail\\thumbnail.jpg",
+            "request": "Create a viral YouTube thumbnail for a video titled \"Top 5 Strongest Black Clover Characters of All Time\".\nThe main character should be Asta (rank #1), with an intense and aggressive expression, filling most of the frame.\nThe video features these characters in order: Yami Sukehiro, Mereoleona Vermillion, Yuno Grinberryall, Julius Novachrono, Asta.\nScene mood: Asta surrounded by clashing red and cyan anti-magic energy, dramatic sky backdrop.\nMake it look like a professional anime YouTube thumbnail with bold text, dramatic lighting, anime-accurate art style, and high contrast. Use the visual identity and color palette of the featured anime. Include 2-3 bold words of text from the title, fully visible and never cropped. Do NOT include any character names, labels, or ranking numbers on the image."
           }
         },
         "step-05-video-composition": {
           "started_at": "2026-04-29T13:25:53.641223+00:00",
           "status": "completed",
-          "completed_at": "2026-05-21T21:38:05.257214+00:00",
+          "completed_at": "2026-05-24T21:36:39.379392+00:00",
           "outputs": {
-            "video_path": "output\\blue-lock-top5\\short_curiosity_rin\\final\\final_short.mp4",
-            "duration": 54.875,
-            "size_mb": 18.8
+            "video_path": "output\\black-clover-top5-20260524\\short_curiosity_julius\\final\\final_short.mp4",
+            "duration": 59.958008,
+            "size_mb": 11.65
           }
         },
         "step-02-image-generation": {
@@ -120,43 +120,43 @@
         "step-bgm-fetch": {
           "started_at": "2026-04-29T22:42:57.906279+00:00",
           "status": "completed",
-          "completed_at": "2026-05-21T20:36:31.391191+00:00",
+          "completed_at": "2026-05-24T19:55:44.314502+00:00",
           "outputs": {
-            "bgm_path": "output\\blue-lock-top5\\audio\\bgm.mp3"
+            "bgm_path": "output\\black-clover-top5-20260524\\audio\\bgm.mp3"
           }
         },
         "fetch-amv": {
           "started_at": "2026-04-30T00:25:21.441929+00:00",
           "status": "completed",
           "outputs": {
-            "amv_path": "output\\blue-lock-top5\\amv5\\amv\\amv_source.mp4",
-            "title": "Rin Itoshi Twixtor Clips (Blue Lock Season 2 Episode 8)",
-            "duration_seconds": 52
+            "amv_path": "output\\black-clover-top5-20260524\\amv3\\amv\\amv_source.mp4",
+            "title": "Yuno Twixtor Clips (Black Clover)",
+            "duration_seconds": 340
           },
-          "completed_at": "2026-05-21T20:00:22.110257+00:00"
+          "completed_at": "2026-05-24T20:36:07.515703+00:00"
         },
         "analyze-amv": {
           "started_at": "2026-04-30T00:39:38.931132+00:00",
           "status": "completed",
           "outputs": {
-            "analysis_path": "output\\blue-lock-top5\\amv2\\amv\\amv_analysis.json",
+            "analysis_path": "output\\black-clover-top5-20260524\\amv3\\amv\\amv_analysis.json",
             "scene_count": 12,
-            "total_duration_seconds": 73.84
+            "total_duration_seconds": 340.08
           },
-          "completed_at": "2026-05-21T20:12:43.813229+00:00"
+          "completed_at": "2026-05-24T20:40:13.148018+00:00"
         },
         "step-07-youtube-publishing": {
           "started_at": "2026-04-30T16:13:31.568495+00:00",
           "status": "completed",
-          "completed_at": "2026-05-21T21:39:47.909844+00:00",
+          "completed_at": "2026-05-24T21:42:20.007297+00:00",
           "outputs": {
-            "video_id": "MdnbpmQj4oc",
-            "url": "https://www.youtube.com/watch?v=MdnbpmQj4oc",
-            "studio_url": "https://studio.youtube.com/video/MdnbpmQj4oc/edit",
+            "video_id": "_11fz6ekVsA",
+            "url": "https://www.youtube.com/watch?v=_11fz6ekVsA",
+            "studio_url": "https://studio.youtube.com/video/_11fz6ekVsA/edit",
             "privacy": "public",
             "publish_at": null,
             "channel_id": "UCyRJuLu9xr7mrRh-j52RQ9Q",
-            "title": "Rin Itoshi's Secret: His Own Brother Turned Him Into Blue Lock's #1 Striker #Shorts"
+            "title": "The Wizard King Was Never Real #Shorts #BlackClover"
           }
         }
       }

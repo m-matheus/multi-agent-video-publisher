@@ -416,19 +416,28 @@ def get_scene_overlay(scene: dict, scene_idx: int, total_scenes: int, title: str
 
 
 def concat_clips_for_scene(clips: list, output_path, ffmpeg_path: str) -> "Path":
-    """Concatenate multiple video clips into one file using ffmpeg concat demuxer."""
+    """Concatenate multiple video clips into one file using ffmpeg concat filter.
+
+    Uses filter_complex concat (not -c copy demuxer) to normalize timestamps across
+    clips — the demuxer -c copy path produces broken PTS that causes ffmpeg to stop
+    decoding early when the caller later trims the output.
+    """
     from pathlib import Path
     output_path = Path(output_path)
     if len(clips) == 1:
         return Path(clips[0])
-    list_path = output_path.with_suffix(".concat.txt")
-    with open(list_path, "w", encoding="utf-8") as f:
-        for c in clips:
-            f.write(f"file '{Path(c).resolve().as_posix()}'\n")
-    cmd = [ffmpeg_path, "-y", "-f", "concat", "-safe", "0",
-           "-i", str(list_path), "-c", "copy", str(output_path)]
+    n = len(clips)
+    cmd = [ffmpeg_path, "-y"]
+    for c in clips:
+        cmd.extend(["-i", str(Path(c))])
+    filter_str = "".join(f"[{i}:v]" for i in range(n)) + f"concat=n={n}:v=1:a=0[outv]"
+    cmd.extend([
+        "-filter_complex", filter_str,
+        "-map", "[outv]",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "fast",
+        str(output_path),
+    ])
     result = subprocess.run(cmd, capture_output=True, timeout=120)
-    list_path.unlink(missing_ok=True)
     if result.returncode != 0:
         raise RuntimeError(f"Concat failed: {result.stderr.decode(errors='replace')[-400:]}")
     return output_path
@@ -705,7 +714,7 @@ def build_synced_narration(segments_dir: Path, scenes: list[dict], output_path: 
     tmp_dir.mkdir(exist_ok=True)
 
     # Seconds of silence added before the rank announcement ("Number X.") on the rank card.
-    PRE_RANK_SILENCE = 0.3
+    PRE_RANK_SILENCE = 0.0
     # Seconds of trailing silence added to the last normal scene before each rank card.
     POST_RANK_SILENCE = 0.5
 

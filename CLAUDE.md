@@ -26,10 +26,16 @@ python scripts/generate_thumbnail.py \
     --script-path "{output_dir}/script/script.json" \
     --output-dir "{output_dir}"
 ```
-- Uses GPT-4o to write a detailed image prompt (YouTube best practices + anime's own visual style)
-- Generates 1536x1024 image via gpt-image-1, resizes to 1280x720 JPEG
-- Output: `{output_dir}/thumbnail/thumbnail.jpg`
+- Uses Responses API: `client.responses.create(model="gpt-4o", tools=[{"type": "image_generation"}])` — same pipeline as ChatGPT
+- GPT-4o writes a detailed image prompt; `gpt-image-1` renders the image
+- Output: `{output_dir}/thumbnail/thumbnail.jpg` (1280x720 JPEG)
 - Can run in parallel with Step 3 and Step 4
+
+**Visual standards:**
+- #1 ranked character centered and large (close shot); other characters in background
+- No character names or ranking numbers in the image
+- 2–3 bold title words fully visible, never cut off
+- Native anime visual style and color palette
 
 ### Step 3: Fetch Anime Frames/Clips
 For **anime content** using real frames:
@@ -55,19 +61,27 @@ python scripts/generate_voice.py --script-path "{output_dir}/script/script.json"
 
 ### Step 5: Fetch BGM (YOU choose the query)
 Based on the video topic and content type, choose a search query and run:
+
+**Primary — Freesound CC0 (zero Content ID claims):**
+```bash
+python scripts/fetch_bgm.py --query "{bgm_query}" --output-dir "{output_dir}"
+```
+
+**Fallback — YouTube (only if Freesound returns nothing):**
 ```bash
 python scripts/fetch_bgm.py --search "{bgm_query}" --output-dir "{output_dir}"
 ```
-This searches YouTube and downloads the top result audio.
 
-**BGM query selection guidelines:**
-- Anime action/fighting → `"epic anime orchestra action no copyright"`
-- Anime emotional/dramatic → `"emotional anime piano orchestral no copyright"`
-- Dragon Ball / power ranking → `"epic dragon ball orchestra no copyright"`
-- Naruto → `"naruto epic orchestral no copyright"`
-- Demon Slayer → `"demon slayer kimetsu orchestral no copyright"`
-- Bedtime story → `"gentle lullaby soft piano children no copyright"`
-- General anime → `"epic anime cinematic orchestra no copyright"`
+**BGM query selection guidelines (use these for both `--query` and `--search`):**
+- Anime action/fighting → `"epic orchestral cinematic"`
+- Anime emotional/dramatic → `"emotional piano orchestral"`
+- Dragon Ball / power ranking → `"epic orchestral cinematic"`
+- Naruto → `"epic orchestral cinematic"`
+- Demon Slayer → `"dark orchestral epic"`
+- Bedtime story → `"gentle lullaby soft piano children"`
+- General anime → `"epic cinematic orchestral"`
+
+The `--query` mode automatically applies `duration:[60 TO 300] license:"Creative Commons 0"` filter.
 
 ### Step 6: Compose Final Video
 ```bash
@@ -98,7 +112,11 @@ Use this workflow when the user wants to create an anime video. The full pipelin
 ### AMV Step 1: Trend Research
 Run both commands to understand the current landscape:
 ```bash
-python scripts/analyze_trends.py --queries "anime power ranking" "top anime 2026" "hidden gem anime" --days 30 --output-file output/trends_cache.json
+python scripts/analyze_trends.py \
+  --queries "top 5 strongest anime characters" "anime power ranking explained" "best anime to watch 2026" "anime characters ranked" "strongest anime villain" "anime lore explained" \
+  --days 30 \
+  --min-duration 60 \
+  --output-file output/trends_cache.json
 ```
 ```bash
 python scripts/analyze_channel.py --days 90 --output-file output/channel_analytics.json --channel-id UCyRJuLu9xr7mrRh-j52RQ9Q
@@ -166,6 +184,10 @@ Read the analysis file(s) and generate `script.json`. For **multi-AMV**:
 
 Write to `{output_dir}/script/script.json` and show the script summary.
 
+**Claude generates the script directly — do NOT spawn a subagent for script generation.** Read the AMV analyses and write the script in the conversation.
+
+**No artificial duration cap** — set `target_duration_seconds` to reflect natural pacing (e.g., ~140–160s for a Top 5 ranking). Never force the video into a short format. Always use 2 normal scenes per rank.
+
 For **single AMV**, scene structure follows the analysis:
 - `duration_seconds` per scene ≈ clip durations from analysis (compositor auto-extends for TTS)
 - `content_type` = `"amv"`
@@ -181,22 +203,34 @@ python scripts/generate_thumbnail.py \
     --script-path "{output_dir}/script/script.json" \
     --output-dir "{output_dir}"
 ```
-- Uses GPT-4o to write a detailed image prompt (YouTube best practices + anime's own visual style)
-- #1 ranked character becomes the focal point of the thumbnail automatically
-- Generates 1536x1024 image via gpt-image-1, resizes to 1280x720 JPEG
-- Output: `{output_dir}/thumbnail/thumbnail.jpg`
+- Uses Responses API: `client.responses.create(model="gpt-4o", tools=[{"type": "image_generation"}])` — same pipeline as ChatGPT
+- GPT-4o writes a detailed image prompt; `gpt-image-1` renders the image
+- Output: `{output_dir}/thumbnail/thumbnail.jpg` (1280x720 JPEG)
 - Can run in parallel with AMV Step 9
+
+**Visual standards:**
+- #1 ranked character centered and large (close shot); other characters in background
+- No character names or ranking numbers in the image
+- 2–3 bold title words fully visible, never cut off
+- Native anime visual style and color palette
 
 ### AMV Step 9: Generate Voice Narration
 ```bash
 python scripts/generate_voice.py --script-path "{output_dir}/script/script.json" --output-dir "{output_dir}"
 ```
 
-### AMV Step 10: Fetch BGM (YouTube only)
+### AMV Step 10: Fetch BGM
+
+**Primary — Freesound CC0 (zero Content ID claims):**
+```bash
+python scripts/fetch_bgm.py --query "{bgm_query}" --output-dir "{output_dir}"
+```
+
+**Fallback — YouTube (only if Freesound returns nothing):**
 ```bash
 python scripts/fetch_bgm.py --search "{bgm_query}" --output-dir "{output_dir}"
 ```
-Use the BGM query guidelines from the standard workflow above. Always use `--search` (YouTube).
+Use the BGM query guidelines from the standard workflow above.
 
 ### AMV Step 11: Compose Final Video
 **Single AMV:**
@@ -208,7 +242,8 @@ python scripts/compose_video.py \
   --output-dir "{output_dir}" \
   --bgm-path "{output_dir}/audio/bgm.mp3" \
   --bgm-volume 0.15 \
-  --zoom-crop
+  --endcard-path "channels/hakase-anime/assets/endcard.png" \
+  --endcard-duration 10
 ```
 
 **Multi-AMV (Top N):**
@@ -220,16 +255,18 @@ python scripts/compose_video.py \
   --output-dir "{output_dir}" \
   --bgm-path "{output_dir}/audio/bgm.mp3" \
   --bgm-volume 0.15 \
-  --zoom-crop \
-  --amv-base-dir "{output_dir}"
+  --amv-base-dir "{output_dir}" \
+  --endcard-path "channels/hakase-anime/assets/endcard.png" \
+  --endcard-duration 10
 ```
+
+> **`--zoom-crop` is opt-in only** — add it only if the user explicitly requested it when submitting the AMV URL (e.g., "esse amv precisa de zoom"). Never pass it by default.
 
 The compositor automatically:
 - Routes scenes to `amvN/frames/` based on the `amv` field in script.json
 - Uses `clip_index` if specified, otherwise cycles clips in order
 - **Never cuts narration** — extends scene duration to fit full TTS audio
-- **Always appends end card** (auto-detected from `channels/hakase-anime/assets/endcard.png`)
-- Applies `--zoom-crop` (12% scale + crop to remove watermarks)
+- **Always appends end card** (via `--endcard-path` flag above)
 
 ### AMV Step 12: CHECKPOINT — Approve Video
 - Report final video path, duration, file size
@@ -353,7 +390,7 @@ Last scene: scene_type="normal", ~14s, outro narration (CTA overlay auto-added b
 
 **Multi-AMV intro/hook**: For intro and hook scenes, assign `amv` values that span multiple different series (e.g., `amv=4` for intro, `amv=2` for scene 2) to give visual variety before the ranking begins. Avoid using `amv=1` for both.
 
-**Last scene duration**: Set the last scene's `duration_seconds` to at least the TTS narration length + 2s buffer. A safe default is 14s.
+**Last scene duration**: After voice generation, check the actual TTS duration for the last scene and set `duration_seconds` to exactly that value. No buffer needed.
 
 **`name` field on rank transitions**: Always include `"name": "<Anime Title>"` on every `rank_transition` scene. The compositor renders the anime title above the gold rank number on the black card.
 
@@ -411,6 +448,21 @@ Before starting, ask the user:
   ```
   Then use `--frames-dir "{output_dir}/amv_curiosity/frames"` and `--amv-base-dir "{output_dir}/amv_curiosity"` in the compose step.
 
+### Curiosidade Pre-Step: Check Existing Channel Videos
+
+Before writing any Curiosidade script, fetch the channel's recent uploads and check for topic overlap:
+
+```python
+youtube.search().list(
+    channelId="UCyRJuLu9xr7mrRh-j52RQ9Q",
+    type="video",
+    order="date",
+    maxResults=50
+)
+```
+
+Scan titles and descriptions. Do **not** generate a script about a topic already covered on the channel. If overlap is found, propose an alternative angle or different anime.
+
 ### Caption Color Selection
 
 Before generating captions, choose `--color` based on the anime's mood:
@@ -459,11 +511,14 @@ python scripts/compose_video.py \
   --output-dir "{output_dir}/short_curiosity_{anime}" \
   --bgm-path "{output_dir}/audio/bgm.mp3" \
   --bgm-volume 0.15 \
-  --zoom-crop \
   --shorts \
   --amv-base-dir "{output_dir}" \
+  --endcard-path "channels/hakase-anime/assets/endcard.png" \
+  --endcard-duration 10 \
   --captions-path "{output_dir}/short_curiosity_{anime}/audio/captions.ass"
 ```
+
+> **`--zoom-crop` is opt-in only** — add it only if explicitly requested for this Short.
 
 ### Curiosidade Step 5: Publish
 ```bash
@@ -486,9 +541,10 @@ python scripts/publish_youtube.py \
 - If a step fails, inform the user and offer to retry or skip
 - For anime content: accept that Content ID claims may occur (not strikes)
 - **NEVER cut narration** — if TTS is longer than scene duration, the compositor extends the scene automatically
-- **ALWAYS include end card** — auto-detected from `channels/hakase-anime/assets/endcard.png` (use `--no-endcard` only if explicitly requested)
+- **ALWAYS include end card** — pass `--endcard-path "channels/hakase-anime/assets/endcard.png" --endcard-duration 10` to `compose_video.py` (use `--no-endcard` only if explicitly requested)
 - **ALWAYS sync rank card with audio** — rank_transition scenes must have narration_text so the card reveal syncs with the spoken announcement
-- **BGM from YouTube only** — always use `--search` flag with `fetch_bgm.py`, never `--query` (Freesound deprecated)
+- **BGM: Freesound CC0 first** — use `--query` flag with `fetch_bgm.py` (CC0 license, zero Content ID claims). Fall back to `--search` (YouTube) only if Freesound returns nothing.
+- **Zoom-crop is opt-in** — never pass `--zoom-crop` to `compose_video.py` by default. Only add it when the user explicitly requests it at AMV URL submission time.
 
 ## Environment
 - Ensure `.env` is configured with API keys before running agent scripts
