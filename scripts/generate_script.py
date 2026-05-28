@@ -11,6 +11,8 @@ Usage (standalone mode - calls external LLM):
 import argparse
 import json
 import sys
+
+sys.stdout.reconfigure(encoding="utf-8")
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -22,7 +24,7 @@ SCRIPT_SCHEMA = {
     "title": "string",
     "description": "string",
     "tags": ["string"],
-    "content_type": "anime | bedtime-story",
+    "content_type": "anime | amv",
     "target_duration_seconds": 60,
     "scenes": [
         {
@@ -39,7 +41,7 @@ SCRIPT_SCHEMA = {
 def parse_args():
     parser = argparse.ArgumentParser(description="Validate and save video script")
     parser.add_argument("--topic", required=True, help="Video topic/theme")
-    parser.add_argument("--type", required=True, choices=["anime", "bedtime-story"], help="Content type")
+    parser.add_argument("--type", required=True, choices=["anime", "amv", "history"], help="Content type")
     parser.add_argument("--output-dir", required=True, help="Output directory for this run")
     parser.add_argument("--duration", type=int, default=60, help="Target video duration in seconds")
     parser.add_argument("--from-file", default=None, help="Path to pre-generated script.json (orchestrator mode)")
@@ -95,12 +97,13 @@ def validate_script(script: dict, target_duration: int) -> tuple[bool, list[str]
             errors.append("Script must have at least 1 scene")
         elif len(script["scenes"]) < 3:
             errors.append("Script should have at least 3 scenes")
-        elif len(script["scenes"]) > 20:
-            errors.append("Script should have at most 20 scenes")
+        elif len(script["scenes"]) > 60:
+            errors.append("Script should have at most 60 scenes")
 
         total_duration = sum(s.get("duration_seconds", 0) for s in script["scenes"])
-        if abs(total_duration - target_duration) > 10:
-            errors.append(f"Total duration {total_duration}s deviates more than 10s from target {target_duration}s")
+        tolerance = max(30, target_duration * 0.05)
+        if abs(total_duration - target_duration) > tolerance:
+            errors.append(f"Total duration {total_duration}s deviates more than {tolerance:.0f}s from target {target_duration}s")
 
         for i, scene in enumerate(script["scenes"]):
             for field in ["visual_prompt", "narration_text", "duration_seconds"]:

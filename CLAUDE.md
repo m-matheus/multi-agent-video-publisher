@@ -5,12 +5,12 @@ You (Claude) are the **orchestrator** of this multi-agent pipeline. You generate
 
 ## How to Run a Video Generation
 
-For **anime content**, the **AMV Workflow** is the default. Ask the user for a YouTube AMV URL unless they explicitly want to use Sakugabooru clips instead.
+For **anime content**, the **AMV Workflow** is the default. Ask the user for a YouTube AMV URL.
 
 ---
 
 ### Step 1: Script Generation (YOU do this directly)
-1. Ask the user for the **topic** and **content type** (anime, bedtime-story, or amv) if not provided
+1. Ask the user for the **topic** and **content type** (anime or amv) if not provided
 2. Generate a `script.json` following the schema below
 3. Write it to `output/{topic}-{timestamp}/script/script.json`
 4. Show the script summary to the user for review
@@ -38,16 +38,7 @@ python scripts/generate_thumbnail.py \
 - Native anime visual style and color palette
 
 ### Step 3: Fetch Anime Frames/Clips
-For **anime content** using real frames:
-```bash
-python scripts/fetch_frames.py --script-path "{output_dir}/script/script.json" --output-dir "{output_dir}"
-```
-This searches Sakugabooru for clips matching each scene's visual description.
-
-For **AI-generated images** (bedtime stories or when preferred):
-```bash
-python scripts/generate_images.py --script-path "{output_dir}/script/script.json" --output-dir "{output_dir}"
-```
+This step is handled by the AMV workflow — see AMV Step 3–4 below for downloading and analyzing the source AMV.
 
 The user can also provide a local folder of frames:
 ```bash
@@ -78,7 +69,6 @@ python scripts/fetch_bgm.py --search "{bgm_query}" --output-dir "{output_dir}"
 - Dragon Ball / power ranking → `"epic orchestral cinematic"`
 - Naruto → `"epic orchestral cinematic"`
 - Demon Slayer → `"dark orchestral epic"`
-- Bedtime story → `"gentle lullaby soft piano children"`
 - General anime → `"epic cinematic orchestral"`
 
 The `--query` mode automatically applies `duration:[60 TO 300] license:"Creative Commons 0"` filter.
@@ -180,7 +170,7 @@ Read the analysis file(s) and generate `script.json`. For **multi-AMV**:
 - Use the `amv` field (1–N) to route each scene to the correct AMV's clip pool
 - Scene durations should match the content rhythm (not necessarily the raw clip durations)
 - Narration drives the pacing — the compositor extends scenes to fit TTS audio
-- **Optionally** assign `clip_index` to pin specific clips to scenes for precise editing
+- **Never assign `clip_index`** — omit it so clips cycle in sequence. Only use if user explicitly requests a specific clip.
 
 Write to `{output_dir}/script/script.json` and show the script summary.
 
@@ -316,7 +306,7 @@ When generating the script, produce this exact JSON structure:
   "title": "Compelling YouTube title (max 100 chars)",
   "description": "YouTube video description with relevant keywords",
   "tags": ["tag1", "tag2", "tag3"],
-  "content_type": "anime | bedtime-story | amv",
+  "content_type": "anime | amv",
   "target_duration_seconds": 60,
   "scenes": [
     {
@@ -330,7 +320,7 @@ When generating the script, produce this exact JSON structure:
       "visual_prompt": "Detailed scene description for image/clip search",
       "narration_text": "Text spoken aloud during this scene",
       "transition": "fade | cut | dissolve",
-      "search_tags": "sakugabooru tags for this scene (e.g., 'fighting animated naruto')"
+      "search_tags": "sakugabooru tags — only used for content_type 'anime' with local frames"
     }
   ]
 }
@@ -340,19 +330,11 @@ When generating the script, produce this exact JSON structure:
 - `rank`: integer, used on `rank_transition` scenes and on character scenes to indicate which rank is being narrated
 - `name`: **required on `rank_transition` scenes** — the anime title to display on the rank card (e.g., `"Jujutsu Kaisen"`). The compositor renders it above the gold rank number.
 - `amv`: integer (1–N), used in multi-AMV videos to route this scene's clips to the correct `amvN/frames/` pool
-- `clip_index`: 0-based index into the sorted list of available clips for that AMV. Use to pin specific clips to a scene. Wraps via modulo if index exceeds clip count.
+- `clip_index`: 0-based index into the sorted list of available clips for that AMV. **Do NOT use by default** — omit it and let the compositor cycle clips in sequence. Only assign when the user explicitly requests a specific clip for a specific scene.
 - All fields except `scene_number`, `duration_seconds`, `narration_text` are optional
 
 ### The `search_tags` field
-When content_type is "anime", include Sakugabooru-compatible tags for each scene.
-When content_type is "amv", **omit `search_tags`** — frames are already extracted from the AMV.
-
-**IMPORTANT — Sakugabooru tag conventions (only these work):**
-- Series names (NOT character names): `naruto`, `dragon_ball`, `dragon_ball_super`, `hellsing`, `one-punch_man` (note hyphen-underscore), `demon_slayer`, `jujutsu_kaisen`, `one_piece`, `bleach`, `attack_on_titan`, `fullmetal_alchemist`
-- Action tags: `fighting`, `running`, `effects`, `explosions`, `smears`
-- Character names only rarely work: `saitama` works; most others like `goku`, `madara`, `alucard` do NOT
-- Combine 2-3 tags max: `naruto fighting`, `dragon_ball_super effects`, `hellsing animated`
-- When no specific series fits, use: `fighting animated`, `effects animated`, `explosions`
+Only used when working with a local frame library. For AMV content, **omit `search_tags`** — frames are already extracted from the AMV.
 
 ---
 
@@ -365,13 +347,6 @@ When content_type is "amv", **omit `search_tags`** — frames are already extrac
 - Match narration energy to the scene's mood (intense = fast-paced, emotional = slower)
 - Do NOT generate `search_tags` — frames are already split and in `frames/`
 - rank_transition scenes MUST have short narration_text (e.g., `"Number five."`) for rank card sync
-
-### For Anime:
-- Dramatic, cinematic narratives with strong visual hooks
-- Narration should be engaging like a storyteller/narrator
-- Visual prompts should describe the ACTION and MOOD (for clip search)
-- Include `search_tags` with Sakugabooru-compatible tags per scene
-- Think about pacing: action scenes = shorter clips, emotional = longer holds
 
 #### Ranking videos (Top N) — required structure
 When the topic is a ranking (Top 5, Top 10, etc.), always generate scenes in this order:
@@ -401,33 +376,16 @@ Last scene: scene_type="normal", ~14s, outro narration (CTA overlay auto-added b
 - Rank about Saitama (One Punch Man) → `one-punch_man effects` for all scenes in that rank
 - Rank about Goku (Dragon Ball) → `dragon_ball_super effects` for all scenes in that rank
 
-### For Bedtime Stories:
-- Gentle, calming narratives suitable for ages 3-8
-- Soothing narration with repetitive comforting phrases
-- Uses AI-generated images (soft watercolor style) instead of anime frames
-- Story should gradually calm toward sleep
-
 ---
 
 ## Content Strategy
 
-### AMV Videos (alternative workflow)
+### AMV Videos (main workflow)
 - Use YouTube AMVs as background (yt-dlp download)
 - Script scenes align with the AMV's natural cut points
 - Heavy narration overlay on top of AMV visual
-- Accept Content ID claims (not strikes) — same as anime workflow
+- Accept Content ID claims (not strikes)
 - Topics: power rankings, character analysis, lore, "what if" scenarios
-
-### Anime Videos (main content)
-- Use real anime clips from Sakugabooru (accepts Content ID claims)
-- Heavy narration overlay (transformative content)
-- Ken Burns/zoom effects on frames
-- Topics: anime lore, character stories, "what if" scenarios, power rankings
-
-### Bedtime Stories (secondary content)
-- 100% AI-generated images (no copyright issues, monetizable)
-- Soft narration, calming music
-- Topics: gentle adventures, magical creatures, nature stories
 
 ---
 
@@ -532,16 +490,139 @@ python scripts/publish_youtube.py \
 
 ---
 
+---
+
+## History Workflow (Echoes of History — AI-generated images)
+
+Use this workflow for the **Echoes of History** channel (`content_type: "history"`). Videos are ~40 minutes long, using AI-generated images (no AMV downloads).
+
+### History Step 1: Trend Research
+```bash
+python scripts/analyze_trends.py \
+  --queries "history documentary" "ancient civilizations" "world war secrets" "roman empire history" "greatest empires history" "historical mysteries explained" \
+  --days 30 \
+  --min-duration 300 \
+  --output-file output/trends_history.json
+```
+```bash
+python scripts/analyze_channel.py --days 90 --output-file output/channel_history.json --channel-id {HISTORY_CHANNEL_ID}
+```
+
+### History Step 2: CHECKPOINT — Suggest Themes
+- Read `output/trends_history.json`
+- Propose 3–5 topic options (prioritize underserved niches with high views)
+- **Wait for user to pick a theme** before generating the script
+
+### History Step 3: Generate Script (YOU do this directly)
+Read the trend data and generate `script.json` for the chosen topic.
+
+**Structure for a 40-min documentary (~2400s):**
+- Scene 1: `scene_type="intro"`, ~30s — dramatic hook, most gripping moment of the story
+- Scenes 2–4: Context (~90s total) — set the stage, time period, geography, key figures
+- Main body (~35 min): 30–40 `scene_type="normal"` scenes, 60–90s each — chronological or thematic narrative
+- Final 2 scenes: Legacy/conclusion (~60s) + CTA outro (~25s)
+
+**Script rules for history:**
+- Narration: documentary style (present tense for drama, vivid sensory details)
+- `visual_prompt`: describe a single historically accurate scene for AI image generation (always end with "oil painting style, dramatic chiaroscuro lighting, dark atmospheric")
+- Do NOT use `search_tags`, `amv`, `clip_index`, or `rank_transition`
+- `content_type` must be `"history"`
+- Scene types: `"intro"` (first scene only), `"normal"` (all others)
+
+Write to `{output_dir}/script/script.json`.
+
+### History Step 4: CHECKPOINT — Approve Script
+- Present: title, number of scenes, total duration (~40 min), narration preview (first 3 scenes)
+- User can request tone/topic adjustments
+- Wait for approval before generating images
+
+### History Step 5: Generate Scene Images
+```bash
+python scripts/generate_scene_images.py \
+  --script-path "{output_dir}/script/script.json" \
+  --output-dir "{output_dir}" \
+  --quality medium
+```
+- Generates one image per scene using gpt-image-1 via Responses API
+- Output: `{output_dir}/frames/scene_01.jpg`, `scene_02.jpg`, etc.
+- Estimated cost: ~$1.50–2.00 for 40 scenes (medium quality)
+- Can run in parallel with History Step 5b
+
+### History Step 5b: Generate Thumbnail
+```bash
+python scripts/generate_thumbnail.py \
+  --script-path "{output_dir}/script/script.json" \
+  --output-dir "{output_dir}"
+```
+History thumbnails automatically use documentary style (dark atmospheric, oil painting, dramatic lighting).
+
+### History Step 6: Generate Voice Narration
+```bash
+python scripts/generate_voice.py \
+  --script-path "{output_dir}/script/script.json" \
+  --output-dir "{output_dir}"
+```
+Uses `VOICE_ID_HISTORY` from `.env`. A deep, authoritative male voice works best (e.g., ElevenLabs "George" or "Brian").
+
+### History Step 7: Fetch BGM
+```bash
+python scripts/fetch_bgm.py --query "epic orchestral cinematic documentary" --output-dir "{output_dir}"
+```
+**BGM query guidelines for history:**
+- Ancient civilizations → `"ancient orchestral atmospheric"`
+- Wars/battles → `"epic orchestral cinematic"`
+- Dark history/crimes → `"dark orchestral suspenseful"`
+- General history → `"epic cinematic orchestral documentary"`
+
+### History Step 8: Compose Final Video
+```bash
+python scripts/compose_video.py \
+  --script-path "{output_dir}/script/script.json" \
+  --frames-dir "{output_dir}/frames" \
+  --audio-dir "{output_dir}/audio" \
+  --output-dir "{output_dir}" \
+  --bgm-path "{output_dir}/audio/bgm.mp3" \
+  --bgm-volume 0.12 \
+  --endcard-duration 10
+```
+- Endcard auto-detected from `channels/echoes-of-history/assets/endcard.png`
+- Static images use Ken Burns zoom/pan effect automatically
+- BGM volume 0.12 (slightly lower than anime — narration is primary)
+
+### History Step 9: CHECKPOINT — Approve Video
+- Report final video path, duration, file size
+- Wait for user approval before publishing
+
+### History Step 10: Publish to YouTube
+```bash
+python scripts/publish_youtube.py \
+  --script-path "{output_dir}/script/script.json" \
+  --video-path "{output_dir}/final/final_video.mp4" \
+  --thumbnail-path "{output_dir}/thumbnail/thumbnail.jpg" \
+  --privacy "private" \
+  --channel-id "{HISTORY_CHANNEL_ID}"
+```
+
+### History Step 11: Post-Publish Steps
+Same as AMV Step 14:
+1. Update description with chapters (use cumulative scene durations to calculate timestamps)
+2. Update tags
+3. Make video public
+4. Post engagement comment (ask viewers which historical era they want next)
+5. Generate community post
+
+---
+
 ## Rules
-- Scene durations must sum to target_duration_seconds (±5s)
-- Minimum 5 scenes, maximum 20 scenes
+- Scene durations must sum to target_duration_seconds (±5s for short videos; ±5% for long videos)
+- Minimum 5 scenes, maximum 60 scenes (history/documentary may use up to 60)
 - First scene must hook the viewer
 - Always show the user the script before proceeding
 - Report progress after each step completes
 - If a step fails, inform the user and offer to retry or skip
 - For anime content: accept that Content ID claims may occur (not strikes)
 - **NEVER cut narration** — if TTS is longer than scene duration, the compositor extends the scene automatically
-- **ALWAYS include end card** — pass `--endcard-path "channels/hakase-anime/assets/endcard.png" --endcard-duration 10` to `compose_video.py` (use `--no-endcard` only if explicitly requested)
+- **ALWAYS include end card** — endcard is auto-detected per channel from `channels/{channel-slug}/assets/endcard.png`. Pass `--endcard-duration 10` to `compose_video.py` (use `--no-endcard` only if explicitly requested)
 - **ALWAYS sync rank card with audio** — rank_transition scenes must have narration_text so the card reveal syncs with the spoken announcement
 - **BGM: Freesound CC0 first** — use `--query` flag with `fetch_bgm.py` (CC0 license, zero Content ID claims). Fall back to `--search` (YouTube) only if Freesound returns nothing.
 - **Zoom-crop is opt-in** — never pass `--zoom-crop` to `compose_video.py` by default. Only add it when the user explicitly requests it at AMV URL submission time.

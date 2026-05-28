@@ -18,7 +18,7 @@ Generate structured video scripts in JSON format from a given topic and content 
 5. First scene must hook the viewer within 3 seconds
 
 ## Operational Framework
-1. Receive topic and content type (anime or bedtime-story)
+1. Receive topic and content type (anime or amv)
 2. Load the appropriate prompt template
 3. Call LLM with the structured prompt
 4. Parse and validate the JSON response
@@ -31,7 +31,7 @@ Generate structured video scripts in JSON format from a given topic and content 
   "title": "Compelling YouTube title (under 100 chars)",
   "description": "YouTube video description with keywords",
   "tags": ["relevant", "searchable", "tags"],
-  "content_type": "anime | bedtime-story",
+  "content_type": "anime | amv",
   "target_duration_seconds": 60,
   "scenes": [
     {

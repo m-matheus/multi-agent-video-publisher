@@ -10,6 +10,8 @@ Usage:
 import argparse
 import json
 import sys
+
+sys.stdout.reconfigure(encoding="utf-8")
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -34,6 +36,32 @@ def fetch_channel_analytics(analytics, channel_id: str, start: str, end: str,
 
     response = analytics.reports().query(**params).execute()
     return response
+
+
+def fetch_all_channel_videos(youtube, channel_id: str) -> list[dict]:
+    """Fetch all video titles from the channel via Data API (no date limit)."""
+    videos = []
+    next_page = None
+    while True:
+        req = youtube.search().list(
+            channelId=channel_id,
+            type="video",
+            order="date",
+            maxResults=50,
+            pageToken=next_page,
+            part="id,snippet",
+        )
+        res = req.execute()
+        for item in res.get("items", []):
+            videos.append({
+                "video_id": item["id"]["videoId"],
+                "title": item["snippet"]["title"],
+                "published_at": item["snippet"]["publishedAt"][:10],
+            })
+        next_page = res.get("nextPageToken")
+        if not next_page:
+            break
+    return videos
 
 
 def fetch_video_titles(youtube, video_ids: list[str]) -> dict[str, str]:
@@ -156,10 +184,15 @@ def main():
     total_watch_minutes = sum(v["watch_minutes"] for v in top_videos)
     total_subscribers = sum(v["subscribers_gained"] for v in top_videos)
 
+    # Fetch all video titles (no date limit) for topic deduplication
+    print("  Fetching all channel video titles...")
+    all_videos = fetch_all_channel_videos(youtube, channel_id)
+
     result = {
         "fetched_at": date.today().isoformat(),
         "period_days": args.days,
         "channel_id": channel_id,
+        "all_videos": all_videos,
         "summary": {
             "total_views": total_views,
             "total_watch_minutes": total_watch_minutes,
@@ -174,6 +207,7 @@ def main():
     output_path.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
 
     print(f"\nChannel analytics saved: {output_path}")
+    print(f"  Total videos on channel (all time): {len(all_videos)}")
     print(f"  Total views ({args.days}d): {total_views:,}")
     print(f"  Last 30d growth: {result['trend']['views_last_30d']:,} vs {result['trend']['views_prev_30d']:,} ({result['trend']['growth_pct']:+.1f}%)")
     if top_videos:

@@ -1,0 +1,18 @@
+{
+  "name": "Echoes of History",
+  "channel_id": "UCPwUnnIni--RawQGwIm68yg",
+  "slug": "echoes-of-history",
+  "content_type": "history",
+  "bio_short": "History's darkest chapters, retold. Wars, empires, and the figures who shaped the world — every week a new story from the past.",
+  "bio_long": "Welcome to Echoes of History — where the past speaks.\n\nWe bring history's most gripping stories to life: forgotten empires, legendary battles, rulers who changed the world, and the events that shaped civilization as we know it.\n\n📌 New videos weekly\n⚔️ Wars · Empires · Historical figures · Untold stories\n\nDrop your favorite historical era or event in the comments — we're always exploring.",
+  "brand": {
+    "character_concept": "Dark atmospheric historical documentary aesthetic. Deep navy/black backgrounds with gold and aged parchment accents. Dramatic lighting suggesting candlelight or torchlight. Oil painting texture overlays.",
+    "palette": "deep navy #1a1a2e background, aged gold #c9a84c accents, off-white #f0e6d3 text — dark, cinematic, historical",
+    "style": "Cinematic documentary style, oil painting textures, dramatic chiaroscuro lighting, aged parchment effects, dark and atmospheric, epic historical scale"
+  },
+  "thumbnail_style": "dark atmospheric historical setting, dramatic chiaroscuro lighting, oil painting aesthetic, cinematic composition, no character names or labels, 2-3 bold title words fully visible",
+  "dalle_prompts": {
+    "profile": "A dramatic historical emblem: an ancient wax seal on dark aged parchment, gold foil design featuring a classical hourglass with wings, surrounded by ornate baroque borders. Deep navy background, aged gold accents, candlelight glow. No text, no watermarks. Square composition.",
+    "banner": "Wide cinematic banner for a history YouTube channel. Deep navy/black background with dramatic golden light. Collage of iconic historical imagery: Roman Colosseum, ancient Egyptian pyramid, medieval castle, Greek temple, Napoleon's silhouette, ancient warriors. Oil painting texture, dramatic chiaroscuro lighting, aged gold frame elements. Gothic serif typography space for 'ECHOES OF HISTORY'. Ultra-detailed, 16:9 widescreen. No text, no watermarks."
+  }
+}

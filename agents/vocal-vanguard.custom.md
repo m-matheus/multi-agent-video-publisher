@@ -11,7 +11,7 @@ Generate high-quality voice narration for all scene text using ElevenLabs API. P
 **Does NOT:** Write scripts, generate images/video, compose video, or publish.
 
 ## Operating Principles
-1. Voice selection must match content type (energetic for anime, soothing for bedtime)
+1. Use the anime voice for all content types
 2. Sequential generation to respect ElevenLabs rate limits
 3. Record actual durations for timing synchronization in composition
 4. Add natural pauses (0.3s silence) between segments
@@ -27,8 +27,7 @@ Generate high-quality voice narration for all scene text using ElevenLabs API. P
 7. Report duration data to state for compositor use
 
 ## Voice Selection
-- **Anime:** Energetic, youthful narrator (VOICE_ID_ANIME from .env)
-- **Bedtime Story:** Warm, soothing storyteller (VOICE_ID_BEDTIME from .env)
+- **Anime/AMV:** Energetic, youthful narrator (VOICE_ID_ANIME from .env)
 
 ## API Configuration
 - Model: `eleven_v3` (highest quality)

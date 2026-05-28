@@ -14,6 +14,8 @@ import argparse
 import base64
 import json
 import sys
+
+sys.stdout.reconfigure(encoding="utf-8")
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -35,7 +37,28 @@ def parse_args():
 
 def build_chatgpt_request(script: dict) -> str:
     title = script.get("title", "")
+    content_type = script.get("content_type", "anime")
     scenes = script.get("scenes", [])
+
+    if content_type == "history":
+        intro_visual = next(
+            (s.get("visual_prompt", "") for s in scenes if s.get("scene_type") == "intro"),
+            scenes[0].get("visual_prompt", "") if scenes else "",
+        )
+        atmosphere_line = f"Scene reference: {intro_visual[:200]}." if intro_visual else ""
+        channel_style = script.get("thumbnail_style", "")
+
+        return "\n".join(filter(None, [
+            f'Create a viral YouTube thumbnail for a history documentary titled "{title}".',
+            atmosphere_line,
+            "Make it look like a professional history documentary thumbnail: "
+            "dark atmospheric, dramatic chiaroscuro lighting, oil painting or cinematic photorealistic style, "
+            "historically accurate setting. "
+            "Include 2-3 bold words of text from the title, fully visible and never cropped. "
+            "Do NOT include any labels, dates, or annotations on the image. "
+            "High contrast, epic scale, cinematic composition.",
+            channel_style if channel_style else "",
+        ]))
 
     top_character = next(
         (s.get("name") for s in scenes

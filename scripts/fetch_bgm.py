@@ -16,6 +16,8 @@ Good royalty-free YouTube music sources:
 import argparse
 import subprocess
 import sys
+
+sys.stdout.reconfigure(encoding="utf-8")
 import time
 from pathlib import Path
 

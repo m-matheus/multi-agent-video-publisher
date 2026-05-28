@@ -8,7 +8,7 @@ Generate a structured video script based on the provided topic and content type.
 
 ## Inputs
 - `topic`: The video topic/theme (provided by user)
-- `content_type`: "anime" or "bedtime-story"
+- `content_type`: "anime" or "amv"
 - `output_dir`: The run-specific output directory
 - `duration`: Target video duration (default: 60s)
 

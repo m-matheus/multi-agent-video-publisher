@@ -32,9 +32,9 @@ Upload the final video to YouTube with full metadata and custom thumbnail.
 - Video accessible at returned YouTube URL
 
 ## YouTube Configuration
-- Category: "1" (Film & Animation) for anime, "24" (Entertainment) for bedtime
+- Category: "1" (Film & Animation) for all content types
 - Privacy: defaults to "private"
-- Made for Kids: true for bedtime-story
+- Made for Kids: always false
 
 ## First-Time Setup
 On first run, the OAuth2 flow will open a browser for authorization.

@@ -1,7 +1,6 @@
 id,name,icon,role,path,execution_mode,skills
 script-scribe,Script Scribe,📝,Generates structured video scripts (Claude orchestrator),agents/script-scribe.custom.md,sequential,llm-generation
-frame-fetcher,Frame Fetcher,🎞️,Fetches anime clips from Sakugabooru or local sources,agents/frame-fetcher.custom.md,sequential,web-fetch
-image-illustrator,Image Illustrator,🎨,Generates AI scene images via fal.ai (bedtime stories),agents/image-illustrator.custom.md,parallel,fal-ai-image
+frame-fetcher,Frame Fetcher,🎞️,Fetches/splits AMV clips for scene composition,agents/frame-fetcher.custom.md,sequential,web-fetch
 video-virtuoso,Video Virtuoso,🎬,Animates images into video clips via fal.ai (optional),agents/video-virtuoso.custom.md,parallel,fal-ai-video
 vocal-vanguard,Vocal Vanguard,🎙️,Generates voice narration via ElevenLabs,agents/vocal-vanguard.custom.md,sequential,elevenlabs-voice
 composite-conductor,Composite Conductor,🎵,Composes final video from clips and audio via FFmpeg,agents/composite-conductor.custom.md,sequential,ffmpeg-composition

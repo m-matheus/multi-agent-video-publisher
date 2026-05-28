@@ -14,6 +14,8 @@ Usage:
 import argparse
 import json
 import sys
+
+sys.stdout.reconfigure(encoding="utf-8")
 import webbrowser
 from pathlib import Path
 

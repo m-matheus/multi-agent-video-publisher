@@ -15,6 +15,8 @@ import argparse
 import json
 import os
 import sys
+
+sys.stdout.reconfigure(encoding="utf-8")
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))

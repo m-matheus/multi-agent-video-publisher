@@ -52,13 +52,12 @@ def load_config() -> dict:
         "elevenlabs_api_key": os.getenv("ELEVENLABS_API_KEY"),
         "elevenlabs_model": os.getenv("ELEVENLABS_MODEL", "eleven_v3"),
         "voice_id_anime": os.getenv("VOICE_ID_ANIME", "JBFqnCBsd6RMkjVDRZzb"),
-        "voice_id_bedtime": os.getenv("VOICE_ID_BEDTIME", "EXAVITQu4vr4xnSDxMaL"),
+        "voice_id_history": os.getenv("VOICE_ID_HISTORY", ""),
         # YouTube
         "youtube_client_id": os.getenv("YOUTUBE_CLIENT_ID"),
         "youtube_client_secret": os.getenv("YOUTUBE_CLIENT_SECRET"),
         "youtube_credentials_path": os.getenv("YOUTUBE_CREDENTIALS_PATH", ".youtube_credentials.json"),
         "youtube_channel_id": os.getenv("YOUTUBE_CHANNEL_ID"),
-        # Tenor (anime GIF/clip search)
         "tenor_api_key": os.getenv("TENOR_API_KEY", "LIVDSRZULELA"),
         "max_parallel_image_requests": int(os.getenv("MAX_PARALLEL_IMAGE_REQUESTS", "5")),
         "max_parallel_video_requests": int(os.getenv("MAX_PARALLEL_VIDEO_REQUESTS", "3")),
@@ -66,7 +65,6 @@ def load_config() -> dict:
         # Durations per content type (seconds)
         "duration_anime_short": int(os.getenv("DURATION_ANIME_SHORT", "60")),
         "duration_anime_normal": int(os.getenv("DURATION_ANIME_NORMAL", "300")),
-        "duration_bedtime": int(os.getenv("DURATION_BEDTIME", "900")),
         # Pixabay (music API restricted — use Freesound or YouTube URL mode instead)
         "pixabay_api_key": os.getenv("PIXABAY_API_KEY"),
         # Freesound (background music search — free key at freesound.org/apiv2/apply/)
@@ -92,16 +90,14 @@ def get_duration(content_type: str, video_format: str = "normal") -> int:
     Get target video duration in seconds.
 
     Args:
-        content_type: "anime" or "bedtime-story"
+        content_type: "anime" or "amv"
         video_format: "short" (YouTube Shorts) or "normal" (regular video)
 
     Returns:
         Duration in seconds.
     """
     config = load_config()
-    if content_type == "bedtime-story":
-        return config["duration_bedtime"]
-    elif video_format == "short":
+    if video_format == "short":
         return config["duration_anime_short"]
     else:
         return config["duration_anime_normal"]

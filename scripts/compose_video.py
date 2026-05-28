@@ -9,6 +9,8 @@ import argparse
 import json
 import subprocess
 import sys
+
+sys.stdout.reconfigure(encoding="utf-8")
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -437,7 +439,7 @@ def concat_clips_for_scene(clips: list, output_path, ffmpeg_path: str) -> "Path"
         "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "fast",
         str(output_path),
     ])
-    result = subprocess.run(cmd, capture_output=True, timeout=120)
+    result = subprocess.run(cmd, capture_output=True, timeout=300)
     if result.returncode != 0:
         raise RuntimeError(f"Concat failed: {result.stderr.decode(errors='replace')[-400:]}")
     return output_path
@@ -901,7 +903,15 @@ def main():
     # Auto-detect endcard if not explicitly provided
     if not args.endcard_path and not args.no_endcard:
         project_root = Path(__file__).parent.parent
-        default_endcard = project_root / "channels" / "hakase-anime" / "assets" / "endcard.png"
+        script_data = json.loads(Path(args.script_path).read_text(encoding="utf-8"))
+        content_type = script_data.get("content_type", "anime")
+        channel_map = {
+            "anime": "hakase-anime",
+            "amv": "hakase-anime",
+            "history": "echoes-of-history",
+        }
+        channel_slug = channel_map.get(content_type, "hakase-anime")
+        default_endcard = project_root / "channels" / channel_slug / "assets" / "endcard.png"
         if default_endcard.exists():
             args.endcard_path = str(default_endcard)
 

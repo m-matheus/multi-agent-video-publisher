@@ -46,36 +46,36 @@
         "step-04-voice-narration": {
           "started_at": "2026-04-29T13:13:32.658429+00:00",
           "status": "completed",
-          "completed_at": "2026-05-24T21:30:43.416793+00:00",
+          "completed_at": "2026-05-27T19:05:12.103554+00:00",
           "outputs": {
-            "narration_path": "output\\black-clover-top5-20260524\\short_curiosity_julius\\audio\\narration_full.mp3",
+            "narration_path": "output\\top5-saiyans-20260527\\short_curiosity_broly\\audio\\narration_full.mp3",
             "segment_durations": [
-              10.109387755102041,
-              12.120816326530612,
-              17.240816326530613,
-              13.479183673469388,
-              7.314285714285714
+              7.471020408163265,
+              17.005714285714287,
+              11.885714285714286,
+              17.397551020408162,
+              25.077551020408162
             ],
-            "total_duration": 61.62285714285714
+            "total_duration": 80.19591836734693
           }
         },
         "step-06-thumbnail-creation": {
           "started_at": "2026-04-29T13:13:34.704113+00:00",
           "status": "completed",
-          "completed_at": "2026-05-24T19:54:04.045462+00:00",
+          "completed_at": "2026-05-27T17:03:46.706374+00:00",
           "outputs": {
-            "thumbnail_path": "output\\black-clover-top5-20260524\\thumbnail\\thumbnail.jpg",
-            "request": "Create a viral YouTube thumbnail for a video titled \"Top 5 Strongest Black Clover Characters of All Time\".\nThe main character should be Asta (rank #1), with an intense and aggressive expression, filling most of the frame.\nThe video features these characters in order: Yami Sukehiro, Mereoleona Vermillion, Yuno Grinberryall, Julius Novachrono, Asta.\nScene mood: Asta surrounded by clashing red and cyan anti-magic energy, dramatic sky backdrop.\nMake it look like a professional anime YouTube thumbnail with bold text, dramatic lighting, anime-accurate art style, and high contrast. Use the visual identity and color palette of the featured anime. Include 2-3 bold words of text from the title, fully visible and never cropped. Do NOT include any character names, labels, or ranking numbers on the image."
+            "thumbnail_path": "output\\top5-saiyans-20260527\\thumbnail\\thumbnail.jpg",
+            "request": "Create a viral YouTube thumbnail for a video titled \"Top 5 Strongest Saiyans in Dragon Ball — Ranked\".\nThe main character should be Goku (rank #1), with an intense and aggressive expression, filling most of the frame.\nThe video features these characters in order: Future Trunks, Gohan, Broly, Vegeta, Goku.\nScene mood: Epic Dragon Ball battle scene with energy explosions and multiple Saiyans clashing.\nMake it look like a professional anime YouTube thumbnail with bold text, dramatic lighting, anime-accurate art style, and high contrast. Use the visual identity and color palette of the featured anime. Include 2-3 bold words of text from the title, fully visible and never cropped. Do NOT include any character names, labels, or ranking numbers on the image."
           }
         },
         "step-05-video-composition": {
           "started_at": "2026-04-29T13:25:53.641223+00:00",
           "status": "completed",
-          "completed_at": "2026-05-24T21:36:39.379392+00:00",
+          "completed_at": "2026-05-27T19:08:28.239780+00:00",
           "outputs": {
-            "video_path": "output\\black-clover-top5-20260524\\short_curiosity_julius\\final\\final_short.mp4",
-            "duration": 59.958008,
-            "size_mb": 11.65
+            "video_path": "output\\top5-saiyans-20260527\\short_curiosity_broly\\final\\final_short.mp4",
+            "duration": 78.625,
+            "size_mb": 34.79
           }
         },
         "step-02-image-generation": {
@@ -120,43 +120,43 @@
         "step-bgm-fetch": {
           "started_at": "2026-04-29T22:42:57.906279+00:00",
           "status": "completed",
-          "completed_at": "2026-05-24T19:55:44.314502+00:00",
+          "completed_at": "2026-05-27T17:04:37.266881+00:00",
           "outputs": {
-            "bgm_path": "output\\black-clover-top5-20260524\\audio\\bgm.mp3"
+            "bgm_path": "output\\top5-saiyans-20260527\\audio\\bgm.mp3"
           }
         },
         "fetch-amv": {
           "started_at": "2026-04-30T00:25:21.441929+00:00",
           "status": "completed",
           "outputs": {
-            "amv_path": "output\\black-clover-top5-20260524\\amv3\\amv\\amv_source.mp4",
-            "title": "Yuno Twixtor Clips (Black Clover)",
-            "duration_seconds": 340
+            "amv_path": "output\\top5-saiyans-20260527\\amv1\\amv\\amv_source.mp4",
+            "title": "Hikari No Will Power [Trunks AMV] Dragon Ball Z [1080p]",
+            "duration_seconds": 290
           },
-          "completed_at": "2026-05-24T20:36:07.515703+00:00"
+          "completed_at": "2026-05-27T13:53:28.113365+00:00"
         },
         "analyze-amv": {
           "started_at": "2026-04-30T00:39:38.931132+00:00",
           "status": "completed",
           "outputs": {
-            "analysis_path": "output\\black-clover-top5-20260524\\amv3\\amv\\amv_analysis.json",
+            "analysis_path": "output\\top5-saiyans-20260527\\amv1\\amv\\amv_analysis.json",
             "scene_count": 12,
-            "total_duration_seconds": 340.08
+            "total_duration_seconds": 290.09
           },
-          "completed_at": "2026-05-24T20:40:13.148018+00:00"
+          "completed_at": "2026-05-27T16:14:56.014268+00:00"
         },
         "step-07-youtube-publishing": {
           "started_at": "2026-04-30T16:13:31.568495+00:00",
           "status": "completed",
-          "completed_at": "2026-05-24T21:42:20.007297+00:00",
+          "completed_at": "2026-05-27T19:12:16.869396+00:00",
           "outputs": {
-            "video_id": "_11fz6ekVsA",
-            "url": "https://www.youtube.com/watch?v=_11fz6ekVsA",
-            "studio_url": "https://studio.youtube.com/video/_11fz6ekVsA/edit",
+            "video_id": "ElmXjiO5cOE",
+            "url": "https://www.youtube.com/watch?v=ElmXjiO5cOE",
+            "studio_url": "https://studio.youtube.com/video/ElmXjiO5cOE/edit",
             "privacy": "public",
             "publish_at": null,
             "channel_id": "UCyRJuLu9xr7mrRh-j52RQ9Q",
-            "title": "The Wizard King Was Never Real #Shorts #BlackClover"
+            "title": "Broly Was Exiled as a Baby Because He Was TOO Strong #Shorts #DragonBall"
           }
         }
       }

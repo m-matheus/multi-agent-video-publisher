@@ -1,10 +1,10 @@
 name: "YouTube Video Generator Squad"
 code: "youtube-video-generator"
 version: "1.0.0"
-description: "Multi-agent system for generating anime and bedtime story videos for YouTube. Handles the full pipeline from script writing to publishing."
+description: "Multi-agent system for generating anime AMV videos for YouTube. Handles the full pipeline from script writing to publishing."
 icon: "🎬"
 
-target_audience: "YouTube viewers interested in anime stories and children's bedtime content (English)"
+target_audience: "YouTube viewers interested in anime content (English)"
 platform: "YouTube"
 
 agents:
@@ -17,12 +17,7 @@ agents:
     name: "Frame Fetcher"
     icon: "🎞️"
     path: agents/frame-fetcher.custom.md
-    note: "For anime content - fetches real clips from Sakugabooru"
-  - id: image-illustrator
-    name: "Image Illustrator"
-    icon: "🎨"
-    path: agents/image-illustrator.custom.md
-    note: "For bedtime stories - generates AI images via fal.ai"
+    note: "For AMV workflow - splits source video into scene clips"
   - id: video-virtuoso
     name: "Video Virtuoso"
     icon: "🎬"
@@ -60,7 +55,7 @@ skills:
 config:
   content_types:
     - anime
-    - bedtime-story
+    - amv
   default_language: en
   target_video_duration_seconds: 60
   output_base: output/

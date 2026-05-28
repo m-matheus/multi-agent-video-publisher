@@ -12,6 +12,8 @@ import argparse
 import json
 import re
 import sys
+
+sys.stdout.reconfigure(encoding="utf-8")
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 

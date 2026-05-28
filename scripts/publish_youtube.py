@@ -7,6 +7,8 @@ Usage:
 import argparse
 import json
 import sys
+
+sys.stdout.reconfigure(encoding="utf-8")
 import time
 from datetime import datetime
 from pathlib import Path
@@ -17,7 +19,7 @@ from scripts.utils.state_manager import StateManager
 
 CATEGORY_MAP = {
     "anime": "1",
-    "bedtime-story": "24",
+    "amv": "1",
 }
 
 
@@ -191,7 +193,7 @@ def main():
         },
         "status": {
             "privacyStatus": "private" if publish_at_rfc else args.privacy,
-            "selfDeclaredMadeForKids": content_type == "bedtime-story",
+            "selfDeclaredMadeForKids": False,
             **({"publishAt": publish_at_rfc} if publish_at_rfc else {}),
         },
     }

@@ -30,9 +30,9 @@ Upload the final video to YouTube with proper metadata, custom thumbnail, and co
 - Title: from script.json `title` (max 100 chars)
 - Description: from script.json `description`
 - Tags: from script.json `tags` array
-- Category: "1" (Film & Animation) for anime, "24" (Entertainment) for bedtime
+- Category: "1" (Film & Animation) for all content types
 - Privacy: configurable, defaults to "private"
-- Made for Kids: true for bedtime-story, false for anime
+- Made for Kids: always false
 
 ## Authentication
 - OAuth2 with offline access (refresh token)

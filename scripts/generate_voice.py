@@ -7,6 +7,8 @@ Usage:
 import argparse
 import json
 import sys
+
+sys.stdout.reconfigure(encoding="utf-8")
 import time
 from pathlib import Path
 
@@ -28,9 +30,8 @@ def parse_args():
 def get_voice_id(content_type: str, config: dict, override: str = None) -> str:
     if override:
         return override
-    if content_type == "bedtime-story":
-        return config["voice_id_bedtime"]
-    return config["voice_id_anime"]
+    key = f"voice_id_{content_type}"
+    return config.get(key) or config["voice_id_anime"]
 
 
 def generate_segment(text: str, voice_id: str, model_id: str, api_key: str) -> bytes:
