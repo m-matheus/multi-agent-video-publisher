@@ -962,9 +962,9 @@ def main():
         sys.exit(1)
 
     # Per-AMV clip routing: if --amv-base-dir is set, load clip lists per amv number
-    amv_files: dict[int, list[Path]] = {}
-    amv_idx: dict[int, int] = {}
-    amv_clip_durations: dict[int, list[float]] = {}
+    amv_files: dict[int | str, list[Path]] = {}
+    amv_idx: dict[int | str, int] = {}
+    amv_clip_durations: dict[int | str, list[float]] = {}
     if args.amv_base_dir:
         amv_base = Path(args.amv_base_dir)
         for n in range(1, 20):
@@ -974,10 +974,23 @@ def main():
                 if clips:
                     amv_files[n] = clips
                     amv_idx[n] = 0
+        # Support named AMV folders (e.g. amv_bc for Black Clover source clips)
+        for named_dir in amv_base.iterdir():
+            if named_dir.is_dir() and named_dir.name.startswith("amv_"):
+                key = named_dir.name[len("amv_"):]  # "amv_bc" -> "bc"
+                frames_dir = named_dir / "frames"
+                if frames_dir.exists():
+                    clips = find_scene_files(frames_dir)
+                    if clips:
+                        amv_files[key] = clips
+                        amv_idx[key] = 0
         if amv_files:
-            print(f"Per-AMV routing enabled: " + ", ".join(f"amv{n}={len(v)} clips" for n, v in sorted(amv_files.items())))
+            parts = []
+            for k, v in sorted(amv_files.items(), key=lambda x: str(x[0])):
+                parts.append(f"amv{k}={len(v)} clips")
+            print(f"Per-AMV routing enabled: " + ", ".join(parts))
             # Pre-load clip durations so we can consume the right number per scene
-            amv_clip_durations: dict[int, list[float]] = {}
+            amv_clip_durations: dict[int | str, list[float]] = {}
             for n, clips in amv_files.items():
                 amv_clip_durations[n] = []
                 for c in clips:

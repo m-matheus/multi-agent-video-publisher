@@ -13,8 +13,8 @@ import json
 import re
 import sys
 
-sys.stdout.reconfigure(encoding="utf-8")
-from datetime import datetime, timedelta, timezone
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -142,11 +142,21 @@ def run_trend_analysis(queries: list[str], days: int, config: dict,
             excluded += 1
             continue
 
+        views = s.get("views", 0)
+        # views_per_day: velocity metric — how many views/day since upload
+        try:
+            days_live = max(1, (date.today() - date.fromisoformat(item["publish_date"])).days)
+        except Exception:
+            days_live = 1
+        views_per_day = round(views / days_live)
+
         videos.append({
             "video_id": vid_id,
             "title": item["title"],
             "channel": item["channel"],
-            "views": s.get("views", 0),
+            "views": views,
+            "views_per_day": views_per_day,
+            "days_live": days_live,
             "publish_date": item["publish_date"],
             "duration_seconds": duration_seconds,
             "duration_iso": duration_iso,
@@ -187,6 +197,8 @@ def parse_args():
                         help="Title keywords to exclude (default: edits, cosplay, gaming, etc.)")
     parser.add_argument("--no-default-exclusions", action="store_true",
                         help="Disable the default keyword exclusion list")
+    parser.add_argument("--no-cache", action="store_true",
+                        help="Ignore existing cache and fetch fresh data only")
     parser.add_argument("--output-file", default="output/trends_cache.json",
                         help="Output JSON file (default: output/trends_cache.json)")
     return parser.parse_args()
@@ -207,14 +219,19 @@ def main():
         if args.exclude_keywords:
             exclude_keywords.extend(args.exclude_keywords)
 
-    # Load existing cache so results accumulate across runs
+    # Load existing cache — only keep entries published within the requested window
+    # so stale videos from prior runs don't pollute fresh trend analysis
     cached_videos: dict[str, dict] = {}
-    if output_path.exists():
+    if output_path.exists() and not args.no_cache:
         try:
+            cutoff = (datetime.now(timezone.utc) - timedelta(days=args.days)).date().isoformat()
             existing = json.loads(output_path.read_text(encoding="utf-8"))
+            kept = 0
             for v in existing.get("videos", []):
-                cached_videos[v["video_id"]] = v
-            print(f"  Loaded {len(cached_videos)} videos from existing cache")
+                if v.get("publish_date", "0000") >= cutoff:
+                    cached_videos[v["video_id"]] = v
+                    kept += 1
+            print(f"  Loaded {kept} recent videos from cache (cutoff: {cutoff})")
         except Exception:
             pass
 
@@ -241,13 +258,24 @@ def main():
     print(f"\nTrend analysis saved: {output_path}")
     print(f"Found {len(result['videos'])} relevant videos (including cache).")
     if result["videos"]:
-        print("\nTop 10 by views:")
+        print("\nTop 10 by views/day (fastest growing):")
+        by_velocity = sorted(result["videos"], key=lambda v: v.get("views_per_day", 0), reverse=True)
+        for v in by_velocity[:10]:
+            vpd = f"{v.get('views_per_day', 0):,}/day"
+            views_fmt = f"{v['views']:,} total"
+            dur = v.get("duration_seconds", 0)
+            dur_str = f"{dur//60}m{dur%60:02d}s" if dur else "?"
+            title = v["title"][:55]
+            print(f"  {vpd:>12}  ({views_fmt:>14})  {dur_str:>7}  {v['publish_date']}  {title}")
+
+        print("\nTop 10 by total views:")
         for v in result["videos"][:10]:
+            vpd = f"{v.get('views_per_day', 0):,}/day"
             views_fmt = f"{v['views']:,}"
             dur = v.get("duration_seconds", 0)
             dur_str = f"{dur//60}m{dur%60:02d}s" if dur else "?"
             title = v["title"][:55]
-            print(f"  {views_fmt:>12} views  {dur_str:>7}  {v['publish_date']}  {title}")
+            print(f"  {views_fmt:>12} views  {vpd:>12}  {dur_str:>7}  {v['publish_date']}  {title}")
 
 
 if __name__ == "__main__":

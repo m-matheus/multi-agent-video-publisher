@@ -89,6 +89,11 @@ The compositor handles:
 - Wait for user approval before publishing
 
 ### Step 8: Publish to YouTube
+If the user specifies a date/time, always use `--publish-at` (schedules automatically — no `--privacy` needed):
+```bash
+python scripts/publish_youtube.py --script-path "{output_dir}/script/script.json" --video-path "{output_dir}/final/final_video.mp4" --thumbnail-path "{output_dir}/thumbnail/thumbnail.jpg" --publish-at "YYYY-MM-DD HH:MM" --channel-id "UCyRJuLu9xr7mrRh-j52RQ9Q"
+```
+Otherwise publish as private for manual review:
 ```bash
 python scripts/publish_youtube.py --script-path "{output_dir}/script/script.json" --video-path "{output_dir}/final/final_video.mp4" --thumbnail-path "{output_dir}/thumbnail/thumbnail.jpg" --privacy "private" --channel-id "UCyRJuLu9xr7mrRh-j52RQ9Q"
 ```
@@ -263,6 +268,11 @@ The compositor automatically:
 - Wait for user approval before publishing
 
 ### AMV Step 13: Publish to YouTube
+If the user specifies a date/time, always use `--publish-at` (schedules automatically — no `--privacy` needed):
+```bash
+python scripts/publish_youtube.py --script-path "{output_dir}/script/script.json" --video-path "{output_dir}/final/final_video.mp4" --thumbnail-path "{output_dir}/thumbnail/thumbnail.jpg" --publish-at "YYYY-MM-DD HH:MM" --channel-id "UCyRJuLu9xr7mrRh-j52RQ9Q"
+```
+Otherwise publish as private for manual review:
 ```bash
 python scripts/publish_youtube.py --script-path "{output_dir}/script/script.json" --video-path "{output_dir}/final/final_video.mp4" --thumbnail-path "{output_dir}/thumbnail/thumbnail.jpg" --privacy "private" --channel-id "UCyRJuLu9xr7mrRh-j52RQ9Q"
 ```
@@ -281,7 +291,7 @@ After the video is uploaded (still private), do all of these before making it pu
 
 2. **Update tags** — use the YouTube Data API `videos.update` to push comprehensive tags (series names, year, genre keywords).
 
-3. **Make video public** — call `videos.update` with `status.privacyStatus = "public"`.
+3. **Make video public** — only needed if published as `--privacy "private"`. If `--publish-at` was used, the video goes public automatically at the scheduled time — skip this step.
 
 4. **Post engagement comment** — use `commentThreads.insert` to post a pinned comment in English asking viewers to engage (e.g., "Which anime from this list is your favorite? Drop it in the comments! 👇"). Then ask the user to go to YouTube Studio and pin it, as the API cannot pin comments directly.
 
@@ -594,6 +604,16 @@ python scripts/compose_video.py \
 - Wait for user approval before publishing
 
 ### History Step 10: Publish to YouTube
+If the user specifies a date/time, always use `--publish-at` (schedules automatically — no `--privacy` needed):
+```bash
+python scripts/publish_youtube.py \
+  --script-path "{output_dir}/script/script.json" \
+  --video-path "{output_dir}/final/final_video.mp4" \
+  --thumbnail-path "{output_dir}/thumbnail/thumbnail.jpg" \
+  --publish-at "YYYY-MM-DD HH:MM" \
+  --channel-id "{HISTORY_CHANNEL_ID}"
+```
+Otherwise publish as private for manual review:
 ```bash
 python scripts/publish_youtube.py \
   --script-path "{output_dir}/script/script.json" \

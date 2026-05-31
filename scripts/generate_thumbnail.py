@@ -35,67 +35,104 @@ def parse_args():
 # Build the natural language request (as if typing into ChatGPT)
 # ---------------------------------------------------------------------------
 
-def build_chatgpt_request(script: dict) -> str:
+# Baseline framing applied to every anime thumbnail — mirrors the visual language
+# of top creators (Anime Balls Deep, Plot Armor, Anime Explained, etc.).
+PREMIUM_BASELINE = """
+Make this look like a premium anime YouTube thumbnail produced by a top creator
+with millions of subscribers (e.g. Anime Balls Deep, Plot Armor, Anime Explained).
+
+Use:
+- Massive foreground character with sharp anime poster quality
+- Vibrant purple, blue, and gold lighting
+- Cosmic atmosphere with energy effects
+- Cinematic depth and high contrast
+- Professional typography, 2-3 bold title words fully visible and never cropped
+- Extremely high contrast, readable at mobile size
+
+The image should feel like an official anime movie poster fused with a viral
+YouTube thumbnail. Do NOT include any character names, labels, or ranking
+numbers on the image.
+""".strip()
+
+
+def _build_history_request(script: dict) -> str:
     title = script.get("title", "")
-    content_type = script.get("content_type", "anime")
     scenes = script.get("scenes", [])
+    intro_visual = next(
+        (s.get("visual_prompt", "") for s in scenes if s.get("scene_type") == "intro"),
+        scenes[0].get("visual_prompt", "") if scenes else "",
+    )
+    atmosphere_line = f"Scene reference: {intro_visual[:200]}." if intro_visual else ""
+    channel_style = script.get("thumbnail_style", "")
 
-    if content_type == "history":
-        intro_visual = next(
-            (s.get("visual_prompt", "") for s in scenes if s.get("scene_type") == "intro"),
-            scenes[0].get("visual_prompt", "") if scenes else "",
-        )
-        atmosphere_line = f"Scene reference: {intro_visual[:200]}." if intro_visual else ""
-        channel_style = script.get("thumbnail_style", "")
+    return "\n".join(filter(None, [
+        f'Create a viral YouTube thumbnail for a history documentary titled "{title}".',
+        atmosphere_line,
+        "Make it look like a professional history documentary thumbnail: "
+        "dark atmospheric, dramatic chiaroscuro lighting, oil painting or cinematic photorealistic style, "
+        "historically accurate setting. "
+        "Include 2-3 bold words of text from the title, fully visible and never cropped. "
+        "Do NOT include any labels, dates, or annotations on the image. "
+        "High contrast, epic scale, cinematic composition.",
+        channel_style if channel_style else "",
+    ]))
 
-        return "\n".join(filter(None, [
-            f'Create a viral YouTube thumbnail for a history documentary titled "{title}".',
-            atmosphere_line,
-            "Make it look like a professional history documentary thumbnail: "
-            "dark atmospheric, dramatic chiaroscuro lighting, oil painting or cinematic photorealistic style, "
-            "historically accurate setting. "
-            "Include 2-3 bold words of text from the title, fully visible and never cropped. "
-            "Do NOT include any labels, dates, or annotations on the image. "
-            "High contrast, epic scale, cinematic composition.",
-            channel_style if channel_style else "",
-        ]))
+
+def _infer_theme(scenes: list, ranked_names: list) -> str:
+    """Pick a theme line based on the script's scene shape."""
+    distinct = {n for n in ranked_names if n}
+    if len(distinct) >= 3:
+        return "Power ranking, legendary characters, strongest beings"
+    if len(distinct) == 2:
+        return "Rivalry, clash, decisive confrontation"
+    if len(distinct) == 1:
+        return "Power, dominance, ultimate strength"
+    return "Anime power, action, spectacle"
+
+
+def build_context_block(script: dict) -> str:
+    """Structured context — feeds GPT-4o the whole video shape, not just the title."""
+    scenes = script.get("scenes", [])
+    title = script.get("title", "")
 
     top_character = next(
         (s.get("name") for s in scenes
          if s.get("scene_type") == "rank_transition" and s.get("rank") == 1),
         None,
     )
+    # Allow script to override which character is centered in the thumbnail
+    top_character = script.get("thumbnail_character", top_character)
     ranked_names = [
         s.get("name") for s in scenes
         if s.get("scene_type") == "rank_transition" and s.get("name")
     ]
-    featured_visual = next(
-        (s.get("visual_prompt", "") for s in scenes if s.get("scene_type") == "intro"),
-        "",
-    )
+    series = script.get("series", "")
+    theme = _infer_theme(scenes, ranked_names)
 
-    character_line = (
-        f"The main character should be {top_character} (rank #1), "
-        f"with an intense and aggressive expression, filling most of the frame."
-        if top_character else ""
-    )
-    ranked_line = (
-        f"The video features these characters in order: {', '.join(ranked_names)}."
-        if ranked_names else ""
-    )
-    atmosphere_line = f"Scene mood: {featured_visual}." if featured_visual else ""
+    sections = [
+        ("Video Topic", title),
+        ("Main Character", top_character or ""),
+        ("Characters Featured", ", ".join(ranked_names)),
+        ("Anime / Series", series),
+        ("Theme", theme),
+    ]
+    # Drop sections with empty values so the block stays clean on sparser scripts
+    return "\n\n".join(f"{label}:\n{value}" for label, value in sections if value)
 
-    return "\n".join(filter(None, [
-        f'Create a viral YouTube thumbnail for a video titled "{title}".',
-        character_line,
-        ranked_line,
-        atmosphere_line,
-        "Make it look like a professional anime YouTube thumbnail with bold text, "
-        "dramatic lighting, anime-accurate art style, and high contrast. "
-        "Use the visual identity and color palette of the featured anime. "
-        "Include 2-3 bold words of text from the title, fully visible and never cropped. "
-        "Do NOT include any character names, labels, or ranking numbers on the image.",
-    ]))
+
+def build_chatgpt_request(script: dict) -> str:
+    if script.get("content_type") == "history":
+        return _build_history_request(script)
+
+    context = build_context_block(script)
+
+    return "\n\n".join(filter(None, [
+        "Create a viral YouTube thumbnail for an anime video.",
+        context,
+        PREMIUM_BASELINE,
+        # Honor existing thumbnail_style override if present
+        script.get("thumbnail_style", "") or "",
+    ])).strip()
 
 
 # ---------------------------------------------------------------------------
