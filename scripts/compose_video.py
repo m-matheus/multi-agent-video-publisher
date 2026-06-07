@@ -57,6 +57,7 @@ def find_system_font() -> str | None:
     import platform
     if platform.system() == "Windows":
         candidates = [
+            "C:/Windows/Fonts/bahnschrift.ttf",   # bold condensed — less "AI" look
             "C:/Windows/Fonts/impact.ttf",
             "C:/Windows/Fonts/arialbd.ttf",
             "C:/Windows/Fonts/arial.ttf",
@@ -462,6 +463,10 @@ def parse_args():
                         help="Duration in seconds for the endcard clip (default: 20s)")
     parser.add_argument("--zoom-crop", action="store_true",
                         help="Apply 7%% zoom + center crop on video clips to remove edge watermarks")
+    parser.add_argument("--crop-corner", default=None,
+                        help="Per-AMV bottom-right corner crop to remove watermarks. "
+                             "Format: 'amv3:0.08' = crop 8%% from bottom and right of amv3 clips. "
+                             "Multiple AMVs: 'amv3:0.08,amv5:0.05'.")
     parser.add_argument("--shorts", action="store_true",
                         help="Output vertical 1080x1920 format for YouTube Shorts")
     parser.add_argument("--captions-path", default=None,
@@ -548,6 +553,7 @@ def create_scene_clip(
     zoom_crop: bool = False,
     shorts: bool = False,
     background_clip: "Path | None" = None,
+    corner_crop: float = 0.0,
 ) -> Path:
     """
     Create a scene clip from input media with effects applied.
@@ -644,7 +650,12 @@ def create_scene_clip(
             # Letterbox: fit full 16:9 frame inside 9:16 with black bars
             vf = f"scale={out_w}:{out_h}:force_original_aspect_ratio=decrease,pad={out_w}:{out_h}:(ow-iw)/2:(oh-ih)/2:black,fps=24{drawtext}"
         else:
-            if zoom_crop:
+            if corner_crop > 0:
+                # Crop watermark from bottom-right, then upscale back to 1920x1080
+                kept_w = f"trunc(iw*{1.0 - corner_crop}/2)*2"
+                kept_h = f"trunc(ih*{1.0 - corner_crop}/2)*2"
+                base_scale = f"crop={kept_w}:{kept_h}:0:0,scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2"
+            elif zoom_crop:
                 base_scale = f"scale=2150:1210:force_original_aspect_ratio=increase,crop=1920:1080:0:0"
             else:
                 base_scale = f"scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2"
@@ -669,7 +680,11 @@ def create_scene_clip(
             # Letterbox: fit full 16:9 frame inside 9:16 with black bars
             vf = f"scale={out_w}:{out_h}:force_original_aspect_ratio=decrease,pad={out_w}:{out_h}:(ow-iw)/2:(oh-ih)/2:black,fps=24{drawtext}"
         else:
-            if zoom_crop:
+            if corner_crop > 0:
+                kept_w = f"trunc(iw*{1.0 - corner_crop}/2)*2"
+                kept_h = f"trunc(ih*{1.0 - corner_crop}/2)*2"
+                base_scale = f"crop={kept_w}:{kept_h}:0:0,scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2"
+            elif zoom_crop:
                 base_scale = f"scale=2150:1210:force_original_aspect_ratio=increase,crop=1920:1080:0:0"
             else:
                 base_scale = f"scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2"
@@ -704,103 +719,90 @@ def build_synced_narration(segments_dir: Path, scenes: list[dict], output_path: 
     """
     Rebuild narration audio locked to each scene's effective duration.
 
-    rank_transition scenes: instead of silence, play the opening of the NEXT scene's
-    narration so the rank announcement ("Number 5 — My Hero Academia") is heard while
-    the black card is visible. The following scene's audio then skips the borrowed portion.
-
-    Effective duration = max(script duration_seconds, remaining TTS audio length),
+    Effective duration = max(script duration_seconds, actual TTS audio length),
     so speech is never cut short when TTS runs longer than the script estimate.
     Returns (audio_path, effective_durations_list).
+
+    Each per-scene segment came directly from the ElevenLabs TTS as a complete
+    independent audio file — no slicing, no word-timestamp cuts. We pad each
+    segment's tail with silence to its effective duration, then concatenate all
+    of them in a single ffmpeg pass via filter_complex (NOT the concat demuxer
+    with -c copy — that path leaves MP3 priming-sample artifacts at boundaries).
     """
     tmp_dir = output_path.parent / "_narr_tmp"
     tmp_dir.mkdir(exist_ok=True)
 
-    # Seconds of silence added before the rank announcement ("Number X.") on the rank card.
-    PRE_RANK_SILENCE = 0.0
-    # Seconds of trailing silence added to the last normal scene before each rank card.
+    # Trailing silence after the last normal scene before each rank card.
+    # Lets the speech of "...changed everything." breathe before "Number five." kicks in.
     POST_RANK_SILENCE = 0.5
 
-    # Identify normal scenes immediately preceding a rank_transition.
     pre_transition_indices: set[int] = set()
     for i, scene in enumerate(scenes):
         if scene.get("scene_type") == "rank_transition" and i > 0:
             if scenes[i - 1].get("scene_type") != "rank_transition":
                 pre_transition_indices.add(i - 1)
 
-    padded_files = []
-    effective_durations = []
+    # Mono 24kHz s16le matches ElevenLabs output and avoids resample artifacts;
+    # the final encode goes to MP3 once at the concat step.
+    PCM_RATE = 24000
+
+    padded_files: list[Path] = []
+    effective_durations: list[float] = []
 
     for i, scene in enumerate(scenes):
         seg_path = segments_dir / f"segment_{i+1:02d}.mp3"
         script_dur = float(scene["duration_seconds"])
-        padded_path = tmp_dir / f"padded_{i+1:02d}.mp3"
+        padded_path = tmp_dir / f"padded_{i+1:02d}.wav"
 
-        if scene.get("scene_type") == "rank_transition":
-            # Play PRE_RANK_SILENCE then the rank card's own announcement segment.
-            effective_dur = script_dur
-            if seg_path.exists():
-                ann_dur = max(0.0, effective_dur - PRE_RANK_SILENCE)
-                cmd = [
-                    _ffmpeg(), "-y",
-                    "-f", "lavfi", "-i", f"anullsrc=r=24000:cl=mono",
-                    "-i", str(seg_path),
-                    "-filter_complex", (
-                        f"[0:a]atrim=end={PRE_RANK_SILENCE}[pre];"
-                        f"[1:a]atrim=end={ann_dur}[ann];"
-                        f"[pre][ann]concat=n=2:v=0:a=1[combined];"
-                        f"[combined]apad=whole_dur={effective_dur},atrim=end={effective_dur}[out]"
-                    ),
-                    "-map", "[out]",
-                    "-c:a", "libmp3lame", "-ar", "24000", "-ac", "1", "-q:a", "4",
-                    str(padded_path),
-                ]
+        if seg_path.exists():
+            try:
+                actual_dur = get_video_duration(seg_path)
+            except Exception:
+                actual_dur = script_dur
+            if scene.get("scene_type") == "rank_transition":
+                # Rank card: pad to script_dur (or actual TTS if longer) so the
+                # "Number X." announcement covers the full card display.
+                effective_dur = max(script_dur, actual_dur)
             else:
-                cmd = [
-                    _ffmpeg(), "-y",
-                    "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono",
-                    "-t", str(effective_dur),
-                    "-c:a", "libmp3lame", "-ar", "24000", "-ac", "1", "-q:a", "4",
-                    str(padded_path),
-                ]
-        else:
-            if seg_path.exists():
-                try:
-                    actual_dur = get_video_duration(seg_path)
-                except Exception:
-                    actual_dur = script_dur
                 trailing = POST_RANK_SILENCE if i in pre_transition_indices else 0.0
                 effective_dur = max(script_dur, actual_dur) + trailing
-                af = f"apad=whole_dur={effective_dur},atrim=end={effective_dur},aresample=24000"
-                cmd = [
-                    _ffmpeg(), "-y", "-i", str(seg_path),
-                    "-af", af,
-                    "-c:a", "libmp3lame", "-ar", "24000", "-ac", "1", "-q:a", "4",
-                    str(padded_path),
-                ]
-            else:
-                effective_dur = script_dur
-                cmd = [
-                    _ffmpeg(), "-y",
-                    "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono",
-                    "-t", str(effective_dur),
-                    "-c:a", "libmp3lame", "-ar", "24000", "-ac", "1", "-q:a", "4",
-                    str(padded_path),
-                ]
+            af = f"aresample={PCM_RATE},apad=whole_dur={effective_dur},atrim=end={effective_dur}"
+            cmd = [
+                _ffmpeg(), "-y", "-i", str(seg_path),
+                "-af", af,
+                "-c:a", "pcm_s16le", "-ar", str(PCM_RATE), "-ac", "1",
+                str(padded_path),
+            ]
+        else:
+            effective_dur = script_dur
+            cmd = [
+                _ffmpeg(), "-y",
+                "-f", "lavfi", "-i", f"anullsrc=r={PCM_RATE}:cl=mono",
+                "-t", str(effective_dur),
+                "-c:a", "pcm_s16le", "-ar", str(PCM_RATE), "-ac", "1",
+                str(padded_path),
+            ]
 
         effective_durations.append(effective_dur)
         subprocess.run(cmd, capture_output=True, check=True)
         padded_files.append(padded_path)
 
-    concat_list = tmp_dir / "concat.txt"
-    concat_list.write_text(
-        "\n".join(f"file '{str(f.absolute())}'" for f in padded_files) + "\n",
-        encoding="utf-8",
-    )
-    subprocess.run(
-        [_ffmpeg(), "-y", "-f", "concat", "-safe", "0",
-         "-i", str(concat_list), "-c:a", "copy", str(output_path)],
-        capture_output=True, check=True,
-    )
+    # Single-pass PCM concat → final MP3 encode. filter_complex concat (not the
+    # demuxer with -c copy) decodes continuously and re-encodes once.
+    cmd = [_ffmpeg(), "-y"]
+    for f in padded_files:
+        cmd.extend(["-i", str(f)])
+    n = len(padded_files)
+    concat_inputs = "".join(f"[{i}:a]" for i in range(n))
+    filter_str = f"{concat_inputs}concat=n={n}:v=0:a=1[aout]"
+    cmd.extend([
+        "-filter_complex", filter_str,
+        "-map", "[aout]",
+        "-c:a", "libmp3lame", "-ar", str(PCM_RATE), "-ac", "1", "-q:a", "4",
+        str(output_path),
+    ])
+    subprocess.run(cmd, capture_output=True, check=True)
+
     import shutil as _sh
     _sh.rmtree(tmp_dir, ignore_errors=True)
     return output_path, effective_durations
@@ -897,8 +899,99 @@ def find_scene_files(frames_dir: Path) -> list[Path]:
     return files
 
 
+def find_best_clip(
+    scene: dict,
+    clips: list,
+    analysis_scenes: list,
+    used_indices: set,
+    threshold: float = 0.12,
+):
+    """Return the index into `clips` of the best-matching AMV clip for a scene, or None.
+
+    Scores using Jaccard token overlap between scene narration/visual text and each
+    clip's Vision description. Looks up each clip's description by segment number
+    extracted from the filename (e.g. scene_05.mp4 -> segment 5), so the mapping
+    stays correct even after clips have been deleted from the frames folder.
+    """
+    import re
+
+    _STOPWORDS = {
+        "a", "an", "the", "is", "in", "on", "of", "and", "or", "to",
+        "it", "this", "that", "are", "was", "with", "for", "as", "at",
+        "be", "by", "from", "has", "have", "but", "not", "so", "its",
+        "they", "their", "there", "one", "two", "no", "if", "he", "she",
+        "we", "you", "do", "very",
+    }
+
+    def tokenize(text: str) -> set:
+        tokens = re.sub(r"[^a-z0-9\s]", " ", text.lower()).split()
+        return {t for t in tokens if t not in _STOPWORDS and len(t) > 2}
+
+    # Build segment_number -> description lookup from analysis
+    seg_desc: dict[int, str] = {}
+    for clip_scene in analysis_scenes:
+        seg_num = clip_scene.get("segment_number")
+        if seg_num is not None:
+            seg_desc[seg_num] = clip_scene.get("description", "")
+
+    query_parts = []
+    if scene.get("narration_text"):
+        query_parts.append(scene["narration_text"])
+    if scene.get("visual_prompt"):
+        query_parts.append(scene["visual_prompt"])
+
+    query_tokens = tokenize(" ".join(query_parts))
+    if not query_tokens:
+        return None
+
+    best_idx = None
+    best_score = 0.0
+
+    for i, clip_path in enumerate(clips):
+        if i in used_indices:
+            continue
+        # Extract segment number from filename: scene_05.mp4 -> 5
+        m = re.search(r"(\d+)", Path(clip_path).stem)
+        seg_num = int(m.group(1)) if m else None
+        description = seg_desc.get(seg_num, "") if seg_num is not None else ""
+        clip_tokens = tokenize(description)
+        if not clip_tokens:
+            continue
+        intersection = query_tokens & clip_tokens
+        union = query_tokens | clip_tokens
+        score = len(intersection) / len(union) if union else 0.0
+        if score > best_score:
+            best_score = score
+            best_idx = i
+
+    return best_idx if best_score >= threshold else None
+
+
 def main():
     args = parse_args()
+
+    # Parse --crop-corner spec into a per-AMV map: {amv_num: crop_fraction}
+    corner_crop_map: dict[int | str, float] = {}
+    if args.crop_corner:
+        for entry in args.crop_corner.split(","):
+            entry = entry.strip()
+            if not entry or ":" not in entry:
+                continue
+            key, val = entry.split(":", 1)
+            key = key.strip().lower()
+            if key.startswith("amv"):
+                rest = key[3:]
+                amv_key: int | str
+                try:
+                    amv_key = int(rest)
+                except ValueError:
+                    amv_key = rest  # named AMV (amv_bc → "bc")
+                try:
+                    corner_crop_map[amv_key] = float(val)
+                except ValueError:
+                    print(f"  WARNING: invalid --crop-corner amount: {val!r}")
+        if corner_crop_map:
+            print(f"Per-AMV corner crop: {corner_crop_map}")
 
     # Auto-detect endcard if not explicitly provided
     if not args.endcard_path and not args.no_endcard:
@@ -965,6 +1058,8 @@ def main():
     amv_files: dict[int | str, list[Path]] = {}
     amv_idx: dict[int | str, int] = {}
     amv_clip_durations: dict[int | str, list[float]] = {}
+    amv_analysis: dict[int | str, list[dict]] = {}
+    amv_used_clips: dict[int | str, set[int]] = {}
     if args.amv_base_dir:
         amv_base = Path(args.amv_base_dir)
         for n in range(1, 20):
@@ -998,6 +1093,20 @@ def main():
                         amv_clip_durations[n].append(get_video_duration(c))
                     except Exception:
                         amv_clip_durations[n].append(10.0)
+            # Init used-clip tracker and load analysis descriptions for semantic matching
+            for n in amv_files:
+                amv_used_clips[n] = set()
+            for n in amv_files:
+                if not isinstance(n, int):
+                    continue
+                analysis_path = amv_base / f"amv{n}" / "amv" / "amv_analysis.json"
+                if analysis_path.exists():
+                    try:
+                        data = json.loads(analysis_path.read_text(encoding="utf-8"))
+                        amv_analysis[n] = data.get("scenes", [])
+                        print(f"  Loaded AMV{n} analysis: {len(amv_analysis[n])} scenes")
+                    except Exception as e:
+                        print(f"  WARNING: Could not load amv_analysis.json for amv{n}: {e}")
 
     state = StateManager()
     state.update_step("step-05-video-composition", "running")
@@ -1020,11 +1129,28 @@ def main():
 
         if scene_type in ("rank_transition", "shorts_cta"):
             source = None
-            # For rank_transition, pick background from the scene's AMV pool (first clip)
             bg_clip = None
             if scene_type == "rank_transition":
-                if amv_num and amv_num in amv_files:
-                    bg_clip = amv_files[amv_num][0]
+                # Resolve which AMV pool to pull the background frame from. Prefer
+                # the scene's own `amv` field. If absent, infer from the NEXT non-
+                # rank-transition scene (which is the rank's actual content scene
+                # and always has `amv` set in standard ranking scripts) — this
+                # gives each rank card a unique series-specific background even
+                # when the script author forgot to set `amv` on the card itself.
+                bg_amv = amv_num
+                if not bg_amv:
+                    for j in range(i + 1, len(scenes)):
+                        nxt = scenes[j]
+                        if nxt.get("scene_type") != "rank_transition" and nxt.get("amv"):
+                            bg_amv = nxt.get("amv")
+                            break
+                if bg_amv and bg_amv in amv_files:
+                    # Use a different clip per rank by indexing on the rank number,
+                    # so successive cards from the same AMV (rare, but possible)
+                    # don't all extract the exact same frame.
+                    rank_n = scene.get("rank") or 0
+                    pool = amv_files[bg_amv]
+                    bg_clip = pool[rank_n % len(pool)]
                 elif source_files:
                     bg_clip = source_files[0]
         elif "clip_index" in scene and amv_num and amv_num in amv_files:
@@ -1034,20 +1160,52 @@ def main():
             source = clips[scene["clip_index"] % len(clips)]
         elif amv_num and amv_num in amv_files:
             bg_clip = None
-            # Per-AMV routing: consume enough clips to fill target_duration without looping
             clips = amv_files[amv_num]
             durations = amv_clip_durations.get(amv_num, [])
             idx = amv_idx[amv_num]
-            selected, accumulated = [], 0.0
-            j = idx
-            while accumulated < target_duration and j < len(clips):
-                selected.append(clips[j])
-                accumulated += durations[j] if j < len(durations) else 10.0
-                j += 1
-            if not selected:
-                selected = [clips[min(idx, len(clips) - 1)]]
-                j = idx + 1
-            amv_idx[amv_num] = j
+
+            # Semantic matching: try to find the clip whose description best matches the scene
+            analysis_scenes = amv_analysis.get(amv_num, [])
+            used = amv_used_clips.get(amv_num, set())
+
+            # Wrap around: if all clips already used, reset so we can cycle again
+            if len(used) >= len(clips):
+                amv_used_clips[amv_num] = set()
+                amv_idx[amv_num] = 0
+                used = set()
+                idx = 0
+
+            semantic_idx = None
+            if analysis_scenes:
+                semantic_idx = find_best_clip(scene, clips, analysis_scenes, used)
+
+            if semantic_idx is not None:
+                selected = [clips[semantic_idx]]
+                amv_used_clips[amv_num].add(semantic_idx)
+                if semantic_idx >= idx:
+                    amv_idx[amv_num] = semantic_idx + 1
+                print(f"    [semantic] amv{amv_num} clip {semantic_idx + 1}/{len(clips)}")
+            else:
+                # Sequential fallback: consume enough clips to fill target_duration
+                selected, accumulated = [], 0.0
+                j = idx % len(clips)  # wrap index if past end
+                start_j = j
+                while accumulated < target_duration:
+                    if j not in amv_used_clips[amv_num]:
+                        selected.append(clips[j])
+                        amv_used_clips[amv_num].add(j)
+                        accumulated += durations[j] if j < len(durations) else 10.0
+                    j = (j + 1) % len(clips)
+                    if j == start_j:
+                        break  # full cycle with nothing new — stop
+                if not selected:
+                    # Last resort: just take the next clip modulo len
+                    fallback_idx = idx % len(clips)
+                    selected = [clips[fallback_idx]]
+                    amv_used_clips[amv_num].add(fallback_idx)
+                    j = (fallback_idx + 1) % len(clips)
+                amv_idx[amv_num] = j
+
             if len(selected) > 1:
                 concat_out = temp_dir / f"concat_amv{amv_num}_{i:02d}.mp4"
                 source = concat_clips_for_scene(selected, concat_out, _ffmpeg())
@@ -1088,6 +1246,7 @@ def main():
                 text_overlay=overlay, scene_type=scene_type, scene=scene,
                 zoom_crop=args.zoom_crop, shorts=args.shorts,
                 background_clip=bg_clip,
+                corner_crop=corner_crop_map.get(amv_num, 0.0) if amv_num else 0.0,
             )
             scene_clips.append(clip_path)
         except subprocess.CalledProcessError as e:

@@ -12,7 +12,7 @@ For **anime content**, the **AMV Workflow** is the default. Ask the user for a Y
 ### Step 1: Script Generation (YOU do this directly)
 1. Ask the user for the **topic** and **content type** (anime or amv) if not provided
 2. Generate a `script.json` following the schema below
-3. Write it to `output/{topic}-{timestamp}/script/script.json`
+3. Write it to `output/{YYYYMMDD}-{topic}/script/script.json` (date prefix first, e.g. `20260603-top5-db-villains`)
 4. Show the script summary to the user for review
 
 ### Step 2: CHECKPOINT — Approve Script
@@ -105,24 +105,28 @@ python scripts/publish_youtube.py --script-path "{output_dir}/script/script.json
 Use this workflow when the user wants to create an anime video. The full pipeline from trend research to publish.
 
 ### AMV Step 1: Trend Research
-Run both commands to understand the current landscape:
-```bash
-python scripts/analyze_trends.py \
-  --queries "top 5 strongest anime characters" "anime power ranking explained" "best anime to watch 2026" "anime characters ranked" "strongest anime villain" "anime lore explained" \
-  --days 30 \
-  --min-duration 60 \
-  --output-file output/trends_cache.json
-```
+Run channel analytics first, then trends (trends auto-loads the channel cache for dedup + suggestions):
 ```bash
 python scripts/analyze_channel.py --days 90 --output-file output/channel_analytics.json --channel-id UCyRJuLu9xr7mrRh-j52RQ9Q
 ```
-Read both output files. Use trends to find underserved topics (high views, few recent competitors). Use channel analytics to double-down on formats similar to top-performing videos.
+```bash
+python scripts/analyze_trends.py \
+  --days 30 \
+  --min-duration 60 \
+  --channel-cache output/channel_analytics.json \
+  --output-file output/trends_cache.json
+```
+The trends script prints a **Top 10 Trending** table (with anime + format detected) and a **Suggested Topics** section automatically. Use the suggestions as the basis for AMV Step 2.
 
-### AMV Step 2: CHECKPOINT — Suggest Themes
+### AMV Step 2: CHECKPOINT — Suggest Themes + Generate Draft Script
 - Propose 3–5 topic options based on trend + channel data
 - **Wait for user to pick a theme**
-- Once theme is chosen, tell the user exactly what AMV(s) to search for on YouTube (one per rank for Top N videos, with suggested search queries)
-- **Wait for user to return with AMV URL(s)** before proceeding
+- Once theme is chosen, **generate the full draft script immediately** (YOU do this, same rules as AMV Step 7 below, but without AMV analysis — write the narration based on your knowledge of the anime/characters/topic)
+- Show the script summary (title, scene list, narration preview)
+- For each rank, summarize in 1–2 sentences what the narration says and what visual moments would best illustrate it (e.g., "Rank 5 – Orochimaru: narration covers his immortality experiments and Sannin history. Best clips: Orochimaru vs Hiruzen, cursed mark application, snake summoning")
+- **Wait for user to return with AMV URL(s)** — the per-rank visual hints help them pick the right AMV
+
+The draft script may be lightly revised after AMV analysis (AMV Step 6) to align `visual_prompt` fields with what the AMVs actually show, but the narration should stay largely unchanged.
 
 ### AMV Step 3: Download AMV(s)
 **Single AMV:**
@@ -164,14 +168,16 @@ Optional flags: `--max-scenes 12` (default), `--min-scene-duration 3.0` (default
 - **Wait for user confirmation** before proceeding to script generation
 - After confirmation, list how many clips remain per AMV so the user can verify
 
-### AMV Step 6: CHECKPOINT — Show AMV Analysis
+### AMV Step 6: CHECKPOINT — Review AMV Analysis & Align Script
 - Read all `amv_analysis.json` files
 - Present: total duration, number of scenes, brief description of each scene per AMV
-- Ask the user for the **video topic/angle** (e.g., "narrate this as a One Piece power ranking")
-- Wait for user confirmation before generating the script
+- Compare the AMV clip descriptions against the draft script's `visual_prompt` fields
+- If a scene's `visual_prompt` doesn't match what the clips actually show, update it to reflect reality
+- Narration text stays unchanged unless the user requests a tone/topic change
+- Ask the user to confirm before proceeding to voice generation
 
-### AMV Step 7: Generate Script from AMV Analysis (YOU do this)
-Read the analysis file(s) and generate `script.json`. For **multi-AMV**:
+### AMV Step 7: Revise Script if Needed (YOU do this)
+If the AMV analysis revealed significant mismatches between the draft script and the available clips, update `script.json`:
 - Use the `amv` field (1–N) to route each scene to the correct AMV's clip pool
 - Scene durations should match the content rhythm (not necessarily the raw clip durations)
 - Narration drives the pacing — the compositor extends scenes to fit TTS audio
@@ -366,7 +372,7 @@ Scene 1:    scene_type="intro",           ~7s,  broad tags ("effects animated fi
 Scene 2:    scene_type="normal",          ~5s,  hook narration introducing the list, broad tags, amv=<varied>
 
 For each rank from N down to 1:
-  Scene X:    scene_type="rank_transition", ~2.5s, rank=N, name="<Anime Title>", narration_text="Number N."
+  Scene X:    scene_type="rank_transition", ~2.5s, rank=N, name="<rank label>", amv=N, narration_text="Number N."
   Scene X+1:  scene_type="normal",          ~8s,   rank=N, series-specific tags, amv=N, character intro
   Scene X+2:  scene_type="normal",          ~7s,   rank=N, series-specific tags, amv=N, why they rank here
 
@@ -377,9 +383,16 @@ Last scene: scene_type="normal", ~14s, outro narration (CTA overlay auto-added b
 
 **Last scene duration**: After voice generation, check the actual TTS duration for the last scene and set `duration_seconds` to exactly that value. No buffer needed.
 
-**`name` field on rank transitions**: Always include `"name": "<Anime Title>"` on every `rank_transition` scene. The compositor renders the anime title above the gold rank number on the black card.
+**`name` field on rank transitions**: Always include `"name"` on every `rank_transition` scene. The compositor renders this label above the gold rank number on the black card. **Pick the label by ranking type:**
+- **Fight ranking** (Top 5 fights, best battles, etc.) → `"Fighter A vs Fighter B"` (both combatants — e.g. `"Luffy vs Kaido"`, `"Zoro vs Mihawk"`)
+- **Character ranking** (Top 5 villains, strongest characters) → character name only (e.g. `"Kaido"`, `"Eren"`)
+- **Anime / arc ranking** (Top 5 anime of all time, best arcs) → series or arc title (e.g. `"Demon Slayer"`, `"Marineford Arc"`)
 
 **Rank transition narration sync**: Every `rank_transition` scene MUST have a short `narration_text` (e.g., `"Number five."`, `"Number one."`) so the rank card reveal syncs with the audio announcement. The compositor holds the rank card until TTS finishes.
+
+**`amv` field on rank transitions**: In multi-AMV ranking videos, every `rank_transition` MUST include `"amv": N` matching the rank's AMV (e.g. rank #5 from amv=2 → the rank card has `amv=2`). The compositor uses this to extract the blurred background frame from the correct AMV. Without it, all rank cards fall back to the same global frame and look identical.
+
+**No arc/location announcement after rank cards**: Do NOT open the post-rank-card narration with the arc or location name (e.g. avoid "East Blue. Roronoa Zoro versus Dracule Mihawk."). Go straight into the matchup ("Roronoa Zoro versus Dracule Mihawk."). The arc/location can be woven into the body of the narration if relevant, but never as a standalone opening sentence.
 
 **Per-rank `search_tags` rule**: Every normal scene narrating a character MUST use that character's series-specific tags. All scenes within the same rank must share the same series tags. Examples:
 - Rank about Alucard (Hellsing) → `hellsing animated` for all scenes in that rank
@@ -508,14 +521,15 @@ Use this workflow for the **Echoes of History** channel (`content_type: "history
 
 ### History Step 1: Trend Research
 ```bash
+python scripts/analyze_channel.py --days 90 --output-file output/channel_history.json --channel-id {HISTORY_CHANNEL_ID}
+```
+```bash
 python scripts/analyze_trends.py \
   --queries "history documentary" "ancient civilizations" "world war secrets" "roman empire history" "greatest empires history" "historical mysteries explained" \
   --days 30 \
   --min-duration 300 \
+  --channel-cache output/channel_history.json \
   --output-file output/trends_history.json
-```
-```bash
-python scripts/analyze_channel.py --days 90 --output-file output/channel_history.json --channel-id {HISTORY_CHANNEL_ID}
 ```
 
 ### History Step 2: CHECKPOINT — Suggest Themes
@@ -634,6 +648,7 @@ Same as AMV Step 14:
 ---
 
 ## Rules
+- **Output folder naming**: always use `YYYYMMDD-{slug}` format (e.g. `20260603-top5-db-villains`). Date prefix first so folders sort chronologically. Never put the date at the end.
 - Scene durations must sum to target_duration_seconds (±5s for short videos; ±5% for long videos)
 - Minimum 5 scenes, maximum 60 scenes (history/documentary may use up to 60)
 - First scene must hook the viewer
