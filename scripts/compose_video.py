@@ -19,7 +19,6 @@ from scripts.utils.file_helpers import ensure_dir, get_scene_files
 from scripts.utils.state_manager import StateManager
 
 FFMPEG = None
-FFPROBE = None
 
 
 def _ffmpeg():
@@ -28,28 +27,6 @@ def _ffmpeg():
         FFMPEG = get_ffmpeg_path()
         # ffprobe lives next to ffmpeg when installed system-wide; use ffmpeg as fallback
     return FFMPEG
-
-
-def _ffprobe():
-    global FFPROBE
-    if FFPROBE is None:
-        import shutil
-        p = shutil.which("ffprobe")
-        if p:
-            FFPROBE = p
-        else:
-            # Try sibling of the imageio-ffmpeg binary
-            from pathlib import Path as _Path
-            ffmpeg_bin = _Path(get_ffmpeg_path())
-            for name in ("ffprobe.exe", "ffprobe"):
-                candidate = ffmpeg_bin.parent / name
-                if candidate.exists():
-                    FFPROBE = str(candidate)
-                    break
-            if not FFPROBE:
-                # Fall back to ffmpeg itself (it can read duration via -i + stderr parse)
-                FFPROBE = get_ffmpeg_path()
-    return FFPROBE
 
 
 def find_system_font() -> str | None:
@@ -500,46 +477,6 @@ def get_video_duration(video_path: Path) -> float:
             h, m2, s = int(m.group(1)), int(m.group(2)), float(m.group(3))
             return h * 3600 + m2 * 60 + s
         raise RuntimeError(f"Could not determine duration of {video_path}")
-
-
-def get_media_info(file_path: Path) -> dict:
-    """Get media info (duration, width, height, has_video, has_audio)."""
-    import shutil
-    ffprobe = shutil.which("ffprobe")
-    if ffprobe:
-        cmd = [ffprobe, "-v", "quiet", "-print_format", "json", "-show_streams", "-show_format", str(file_path)]
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        info = json.loads(result.stdout)
-    else:
-        result = subprocess.run([_ffmpeg(), "-i", str(file_path)], capture_output=True, text=True)
-        import re
-        duration = 0.0
-        m = re.search(r"Duration:\s*(\d+):(\d+):(\d+\.\d+)", result.stderr)
-        if m:
-            h, m2, s = int(m.group(1)), int(m.group(2)), float(m.group(3))
-            duration = h * 3600 + m2 * 60 + s
-        wh = re.search(r"(\d{2,5})x(\d{2,5})", result.stderr)
-        width = int(wh.group(1)) if wh else 1920
-        height = int(wh.group(2)) if wh else 1080
-        has_video = "Video:" in result.stderr
-        has_audio = "Audio:" in result.stderr
-        return {"duration": duration, "width": width, "height": height, "has_video": has_video, "has_audio": has_audio}
-
-    has_video = any(s["codec_type"] == "video" for s in info.get("streams", []))
-    has_audio = any(s["codec_type"] == "audio" for s in info.get("streams", []))
-    duration = float(info.get("format", {}).get("duration", 0))
-
-    video_stream = next((s for s in info.get("streams", []) if s["codec_type"] == "video"), None)
-    width = int(video_stream.get("width", 1920)) if video_stream else 1920
-    height = int(video_stream.get("height", 1080)) if video_stream else 1080
-
-    return {
-        "duration": duration,
-        "width": width,
-        "height": height,
-        "has_video": has_video,
-        "has_audio": has_audio,
-    }
 
 
 def create_scene_clip(
@@ -998,12 +935,7 @@ def main():
         project_root = Path(__file__).parent.parent
         script_data = json.loads(Path(args.script_path).read_text(encoding="utf-8"))
         content_type = script_data.get("content_type", "anime")
-        channel_map = {
-            "anime": "hakase-anime",
-            "amv": "hakase-anime",
-            "history": "echoes-of-history",
-        }
-        channel_slug = channel_map.get(content_type, "hakase-anime")
+        channel_slug = "hakase-anime"
         default_endcard = project_root / "channels" / channel_slug / "assets" / "endcard.png"
         if default_endcard.exists():
             args.endcard_path = str(default_endcard)

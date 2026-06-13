@@ -181,29 +181,6 @@ SERIES_PROTAGONIST: dict[str, str] = {
 }
 
 
-def _build_history_request(script: dict) -> str:
-    title = script.get("title", "")
-    scenes = script.get("scenes", [])
-    intro_visual = next(
-        (s.get("visual_prompt", "") for s in scenes if s.get("scene_type") == "intro"),
-        scenes[0].get("visual_prompt", "") if scenes else "",
-    )
-    atmosphere_line = f"Scene reference: {intro_visual[:200]}." if intro_visual else ""
-    channel_style = script.get("thumbnail_style", "")
-
-    return "\n".join(filter(None, [
-        f'Create a viral YouTube thumbnail for a history documentary titled "{title}".',
-        atmosphere_line,
-        "Make it look like a professional history documentary thumbnail: "
-        "dark atmospheric, dramatic chiaroscuro lighting, oil painting or cinematic photorealistic style, "
-        "historically accurate setting. "
-        "Include 2-3 bold words of text from the title, fully visible and never cropped. "
-        "Do NOT include any labels, dates, or annotations on the image. "
-        "High contrast, epic scale, cinematic composition.",
-        channel_style if channel_style else "",
-    ]))
-
-
 def _infer_theme(scenes: list, ranked_names: list) -> str:
     """Pick a theme line based on the script's scene shape."""
     distinct = {n for n in ranked_names if n}
@@ -276,9 +253,6 @@ def _resolve_anime_logo_style(script: dict, ranked_names: list) -> str:
 
 
 def build_chatgpt_request(script: dict) -> str:
-    if script.get("content_type") == "history":
-        return _build_history_request(script)
-
     context = build_context_block(script)
     scenes = script.get("scenes", [])
     ranked_names = [

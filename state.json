@@ -46,36 +46,36 @@
         "step-04-voice-narration": {
           "started_at": "2026-04-29T13:13:32.658429+00:00",
           "status": "completed",
-          "completed_at": "2026-05-30T23:14:55.306054+00:00",
+          "completed_at": "2026-06-13T16:02:28.202691+00:00",
           "outputs": {
-            "narration_path": "output\\bleach-tybw-top5\\short_curiosity_yhwach\\audio\\narration_full.mp3",
+            "narration_path": "output\\20260613-top5-jjk-fights\\short_curiosity_yuta\\audio\\narration_full.mp3",
             "segment_durations": [
-              8.907755102040817,
-              12.51265306122449,
-              11.80734693877551,
-              14.680816326530612,
-              16.770612244897958
+              6.2693877551020405,
+              16.848979591836734,
+              13.714285714285714,
+              14.602448979591836,
+              10.919183673469387
             ],
-            "total_duration": 66.03755102040816
+            "total_duration": 63.712653061224486
           }
         },
         "step-06-thumbnail-creation": {
           "started_at": "2026-04-29T13:13:34.704113+00:00",
           "status": "completed",
-          "completed_at": "2026-05-30T22:32:55.694156+00:00",
+          "completed_at": "2026-06-13T15:28:21.787392+00:00",
           "outputs": {
-            "thumbnail_path": "output\\bleach-tybw-top5\\thumbnail\\thumbnail.jpg",
-            "request": "Create a viral YouTube thumbnail for a video titled \"Top 5 Strongest Characters in Bleach TYBW — Ranked\".\nThe main character should be Yhwach (rank #1), with an intense and aggressive expression, filling most of the frame.\nThe video features these characters in order: Kenpachi Zaraki, Ichigo Kurosaki, Sosuke Aizen, Genryusai Yamamoto, Yhwach.\nScene mood: Dramatic Bleach TYBW intro — white-framed doors opening into blinding light.\nMake it look like a professional anime YouTube thumbnail with bold text, dramatic lighting, anime-accurate art style, and high contrast. Use the visual identity and color palette of the featured anime. Include 2-3 bold words of text from the title, fully visible and never cropped. Do NOT include any character names, labels, or ranking numbers on the image."
+            "thumbnail_path": "output\\20260613-top5-jjk-fights\\thumbnail\\thumbnail.jpg",
+            "request": "Create a viral YouTube thumbnail for an anime video.\n\nVideo Topic:\nTop 5 Best Fights in Jujutsu Kaisen — Ranked\n\nMain Character:\nYuji Itadori\n\nCharacters Featured:\nYuji & Todo vs Hanami, Yuta vs Geto, Gojo vs Toji, Yuji vs Mahito, Sukuna vs Mahoraga\n\nAnime / Series:\nJujutsu Kaisen\n\nTheme:\nPower ranking, legendary characters, strongest beings\n\nCreate a viral YouTube thumbnail for a single-franchise ranking video.\n\nComposition:\nThe franchise's main protagonist is the dominant figure — centered or slightly right,\nfilling roughly half the thumbnail in a powerful close shot. Render them in their\nmost iconic form (peak transformation, signature pose, or definitive battle stance).\n\nPlace 1–2 supporting characters from the same anime in the background — smaller,\npartially shadowed, partially behind the protagonist. Hint at the rest of the\nranked cast without crowding the frame. No ranking numbers anywhere.\n\nUse cinematic anime key art quality matching the show's official promotional posters.\nBackground should evoke an iconic location or signature visual effect from the series\n(flag of the crew, the show's signature aura color, a battlefield from a memorable arc, etc).\n\nUse dramatic rim lighting, strong glow effects, volumetric lighting and high contrast.\n\nTEXT RULES — critical:\n- The headline must be the franchise name treated as the show's official logo.\n  Use the show's actual logo aesthetic (color, font, weight, glow) — no generic fonts.\n  Place the logo prominently in the upper-left or upper-center.\n- Below or beside the logo, add 2–3 punchy words that describe the ranking\n  (e.g. \"TOP 5 FIGHTS\", \"STRONGEST BATTLES\", \"GREATEST DUELS\", \"BEST FIGHTS EVER\").\n  This subtitle should be smaller than the logo but still bold and fully visible.\n- DO NOT use generic clickbait phrases like \"YOU MISSED THIS\" or \"NOBODY WATCHES THIS\".\n- All text must be fully visible — never cropped at any edge.\n\nThumbnail should instantly read as \"this is THE ranking video for {SERIES}\".\n\nNo clutter. No UI elements. No subtitles. No ranking numbers on the image."
           }
         },
         "step-05-video-composition": {
           "started_at": "2026-04-29T13:25:53.641223+00:00",
           "status": "completed",
-          "completed_at": "2026-05-30T23:20:28.795520+00:00",
+          "completed_at": "2026-06-13T16:06:20.454986+00:00",
           "outputs": {
-            "video_path": "output\\bleach-tybw-top5\\short_curiosity_yhwach\\final\\final_short.mp4",
-            "duration": 64.458333,
-            "size_mb": 31.42
+            "video_path": "output\\20260613-top5-jjk-fights\\short_curiosity_yuta\\final\\final_short.mp4",
+            "duration": 62.125,
+            "size_mb": 28.87
           }
         },
         "step-02-image-generation": {
@@ -120,43 +120,43 @@
         "step-bgm-fetch": {
           "started_at": "2026-04-29T22:42:57.906279+00:00",
           "status": "completed",
-          "completed_at": "2026-05-30T22:34:24.389035+00:00",
+          "completed_at": "2026-06-13T15:27:58.987632+00:00",
           "outputs": {
-            "bgm_path": "output\\bleach-tybw-top5\\audio\\bgm.mp3"
+            "bgm_path": "output\\20260613-top5-jjk-fights\\audio\\bgm.mp3"
           }
         },
         "fetch-amv": {
           "started_at": "2026-04-30T00:25:21.441929+00:00",
           "status": "completed",
           "outputs": {
-            "amv_path": "output\\bleach-tybw-top5\\amv5\\amv\\amv_source.mp4",
-            "title": "Ichigo vs Yhwach Full Fight English Dub - Bleach: Thousand Year Blood War Part 3",
-            "duration_seconds": 156
+            "amv_path": "output\\20260613-top5-jjk-fights\\amv3\\amv\\amv_source.mp4",
+            "title": "Gojo vs Toji Round 2 - Full Fight | Jujutsu Kaisen Season 2 Episode 4 | 4K 60FPS | Eng Sub",
+            "duration_seconds": 385
           },
-          "completed_at": "2026-05-30T03:12:20.753304+00:00"
+          "completed_at": "2026-06-13T05:15:39.415468+00:00"
         },
         "analyze-amv": {
           "started_at": "2026-04-30T00:39:38.931132+00:00",
           "status": "completed",
           "outputs": {
-            "analysis_path": "output\\bleach-tybw-top5\\amv4\\amv\\amv_analysis.json",
+            "analysis_path": "output\\20260613-top5-jjk-fights\\amv5\\amv\\amv_analysis.json",
             "scene_count": 12,
-            "total_duration_seconds": 107.21
+            "total_duration_seconds": 330.07
           },
-          "completed_at": "2026-05-30T22:23:52.000275+00:00"
+          "completed_at": "2026-06-13T15:05:55.980928+00:00"
         },
         "step-07-youtube-publishing": {
           "started_at": "2026-04-30T16:13:31.568495+00:00",
           "status": "completed",
-          "completed_at": "2026-05-30T23:23:15.699997+00:00",
+          "completed_at": "2026-06-13T16:08:00.542853+00:00",
           "outputs": {
-            "video_id": "njMKgLiA5ZI",
-            "url": "https://www.youtube.com/watch?v=njMKgLiA5ZI",
-            "studio_url": "https://studio.youtube.com/video/njMKgLiA5ZI/edit",
+            "video_id": "pjazLufvIWk",
+            "url": "https://www.youtube.com/watch?v=pjazLufvIWk",
+            "studio_url": "https://studio.youtube.com/video/pjazLufvIWk/edit",
             "privacy": "public",
             "publish_at": null,
             "channel_id": "UCyRJuLu9xr7mrRh-j52RQ9Q",
-            "title": "Yhwach Never Actually Sleeps — And It's Terrifying #Shorts #Bleach #BleachTYBW"
+            "title": "Yuta Didn't Save Rika — He Cursed Her #Shorts #JujutsuKaisen"
           }
         }
       }

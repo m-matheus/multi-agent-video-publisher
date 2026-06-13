@@ -52,7 +52,6 @@ def load_config() -> dict:
         "elevenlabs_api_key": os.getenv("ELEVENLABS_API_KEY"),
         "elevenlabs_model": os.getenv("ELEVENLABS_MODEL", "eleven_v3"),
         "voice_id_anime": os.getenv("VOICE_ID_ANIME", "JBFqnCBsd6RMkjVDRZzb"),
-        "voice_id_history": os.getenv("VOICE_ID_HISTORY", ""),
         # YouTube
         "youtube_client_id": os.getenv("YOUTUBE_CLIENT_ID"),
         "youtube_client_secret": os.getenv("YOUTUBE_CLIENT_SECRET"),
