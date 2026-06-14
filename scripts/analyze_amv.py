@@ -120,12 +120,12 @@ def extract_keyframe(video_path: str, timestamp: float, output_path: str) -> boo
     return result.returncode == 0 and Path(output_path).exists()
 
 
-def describe_frame(client: anthropic.Anthropic, image_path: str, segment_num: int, total: int) -> str:
+def describe_frame(client: anthropic.Anthropic, image_path: str, segment_num: int, total: int, model: str) -> str:
     with open(image_path, "rb") as f:
         image_data = base64.standard_b64encode(f.read()).decode()
 
     response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model=model,
         max_tokens=200,
         messages=[
             {
@@ -175,6 +175,7 @@ def analyze_amv(
     output_dir: str,
     max_scenes: int = 12,
     min_scene_duration: float = 3.0,
+    vision_model: str = "claude-haiku-4-5-20251001",
 ) -> dict:
     out = Path(output_dir)
     amv_dir = ensure_dir(out / "amv")
@@ -192,6 +193,7 @@ def analyze_amv(
     print(f"Built {len(segments)} scene(s) after merging")
 
     client = anthropic.Anthropic()
+    print(f"  Vision model: {vision_model}")
     scenes = []
 
     for i, (start, end) in enumerate(segments, 1):
@@ -205,7 +207,7 @@ def analyze_amv(
         description = f"Scene {i} of the AMV."
         if ok:
             try:
-                description = describe_frame(client, keyframe_path, i, len(segments))
+                description = describe_frame(client, keyframe_path, i, len(segments), vision_model)
                 print(f"    Vision: {description[:80]}...")
             except Exception as e:
                 print(f"    Vision API error (using placeholder): {e}")
@@ -246,12 +248,13 @@ def main():
     parser.add_argument("--min-scene-duration", type=float, default=3.0, help="Min scene duration in seconds (default: 3.0)")
     args = parser.parse_args()
 
-    load_config()
+    config = load_config()
+    vision_model = config.get("analyze_amv_model", "claude-haiku-4-5-20251001")
     state = StateManager()
     state.update_step("analyze-amv", "running")
 
     try:
-        analysis = analyze_amv(args.amv_path, args.output_dir, args.max_scenes, args.min_scene_duration)
+        analysis = analyze_amv(args.amv_path, args.output_dir, args.max_scenes, args.min_scene_duration, vision_model)
         state.update_step("analyze-amv", "completed", {
             "analysis_path": str(Path(args.output_dir) / "amv" / "amv_analysis.json"),
             "scene_count": analysis["scene_count"],

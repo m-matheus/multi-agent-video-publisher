@@ -134,6 +134,17 @@ ANIME_LOGO_STYLE: dict[str, str] = {
     "fairy tail": "Use the Fairy Tail logo aesthetic: rounded warm guild-emblem style, warm amber and brown tones, inviting and bold.",
     "re:zero": "Use the Re:Zero logo aesthetic: dark blue-black lettering with pale lavender shadows, quiet and melancholic.",
     "overlord": "Use the Overlord logo aesthetic: gothic dark-fantasy lettering in bone-white and obsidian, regal and sinister.",
+    # Extended
+    "solo leveling": "Use the Solo Leveling logo aesthetic: sharp ominous black lettering with glowing purple shadow magic, dark and powerful.",
+    "frieren": "Use the Frieren logo aesthetic: soft aged-parchment lettering with muted greens and golds, timeless and melancholic.",
+    "blue lock": "Use the Blue Lock logo aesthetic: bold electric blue and white geometric lettering, high-intensity sports energy.",
+    "kaiju no. 8": "Use the Kaiju No. 8 logo aesthetic: military stencil lettering with monster-scale grit, dark grey-green palette.",
+    "dandadan": "Use the Dandadan logo aesthetic: explosive pop-art coloring, chaotic retro manga lettering, vivid orange and purple.",
+    "mob psycho": "Use the Mob Psycho 100 logo aesthetic: bold hand-drawn text with psychic energy crackling effect, white on dark.",
+    "oshi no ko": "Use the Oshi no Ko logo aesthetic: pastel idol-pop lettering with star motifs, pink and gold shimmer.",
+    "hell's paradise": "Use the Hell's Paradise logo aesthetic: ink-brush Japanese calligraphy style in blood red and black, brutal and artistic.",
+    "mushoku tensei": "Use the Mushoku Tensei logo aesthetic: fantasy scroll lettering in warm amber, detailed and classic isekai.",
+    "code geass": "Use the Code Geass logo aesthetic: royal chess-inspired lettering in deep crimson with gold filigree trim, regal and tactical.",
 }
 
 
@@ -178,6 +189,17 @@ SERIES_PROTAGONIST: dict[str, str] = {
     "re:zero": "Subaru Natsuki",
     "overlord": "Ainz Ooal Gown",
     "one punch man": "Saitama",
+    # Extended — matches FRANCHISE_MAP in analyze_trends.py
+    "solo leveling": "Sung Jin-Woo",
+    "frieren": "Frieren",
+    "blue lock": "Isagi Yoichi",
+    "kaiju no. 8": "Kafka Hibino",
+    "dandadan": "Momo Ayase",
+    "mob psycho": "Shigeo Kageyama",
+    "oshi no ko": "Aqua Hoshino",
+    "hell's paradise": "Gabimaru",
+    "mushoku tensei": "Rudeus Greyrat",
+    "code geass": "Lelouch vi Britannia",
 }
 
 

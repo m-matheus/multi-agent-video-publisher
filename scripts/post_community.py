@@ -16,7 +16,6 @@ import json
 import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
-import webbrowser
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -123,17 +122,8 @@ def main():
     print(f"\nVideo URL: {post['video_url']}")
     print("=" * 60)
     print(f"\nSaved to: {output_path}")
-
-    studio_url = f"https://studio.youtube.com/channel/{channel_id}/community"
-    print(f"\nOpening YouTube Studio: {studio_url}")
-    try:
-        webbrowser.open(studio_url)
-    except Exception as e:
-        print(f"  (Could not open browser automatically: {e})")
-    print("\nInstructions:")
-    print("  1. Paste the post_text above into the community post box")
-    print("  2. Click 'Add poll' and enter the poll_question and poll_options")
-    print("  3. Post it!")
+    print(f"\nYouTube Studio Community tab: https://studio.youtube.com/channel/{channel_id}/community")
+    print("Copy the post_text above and paste it there manually.")
 
 
 if __name__ == "__main__":

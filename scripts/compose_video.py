@@ -842,8 +842,8 @@ def find_best_clip(
     analysis_scenes: list,
     used_indices: set,
     threshold: float = 0.12,
-):
-    """Return the index into `clips` of the best-matching AMV clip for a scene, or None.
+) -> tuple[int | None, float]:
+    """Return (clip_index, score) for the best-matching AMV clip, or (None, 0.0).
 
     Scores using Jaccard token overlap between scene narration/visual text and each
     clip's Vision description. Looks up each clip's description by segment number
@@ -901,7 +901,7 @@ def find_best_clip(
             best_score = score
             best_idx = i
 
-    return best_idx if best_score >= threshold else None
+    return best_idx if best_score >= threshold else None, best_score
 
 
 def main():
@@ -1108,15 +1108,17 @@ def main():
                 idx = 0
 
             semantic_idx = None
+            semantic_score = 0.0
             if analysis_scenes:
-                semantic_idx = find_best_clip(scene, clips, analysis_scenes, used)
+                semantic_idx, semantic_score = find_best_clip(scene, clips, analysis_scenes, used)
 
             if semantic_idx is not None:
+                clip_name = Path(clips[semantic_idx]).name
                 selected = [clips[semantic_idx]]
                 amv_used_clips[amv_num].add(semantic_idx)
                 if semantic_idx >= idx:
                     amv_idx[amv_num] = semantic_idx + 1
-                print(f"    [semantic] amv{amv_num} clip {semantic_idx + 1}/{len(clips)}")
+                print(f"    [semantic] scene {scene.get('scene_number','?')}: amv{amv_num} → {clip_name} (score={semantic_score:.2f})")
             else:
                 # Sequential fallback: consume enough clips to fill target_duration
                 selected, accumulated = [], 0.0

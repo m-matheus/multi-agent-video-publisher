@@ -86,13 +86,13 @@ The compositor handles:
 - Wait for user approval before publishing
 
 ### Step 8: Publish to YouTube
-If the user specifies a date/time, always use `--publish-at` (schedules automatically — no `--privacy` needed):
-```bash
-python scripts/publish_youtube.py --script-path "{output_dir}/script/script.json" --video-path "{output_dir}/final/final_video.mp4" --thumbnail-path "{output_dir}/thumbnail/thumbnail.jpg" --publish-at "YYYY-MM-DD HH:MM" --channel-id "UCyRJuLu9xr7mrRh-j52RQ9Q"
-```
-Otherwise publish as private for manual review:
+Publish as private for manual review (default). If the user already specified a date/time, use `--publish-at` instead:
 ```bash
 python scripts/publish_youtube.py --script-path "{output_dir}/script/script.json" --video-path "{output_dir}/final/final_video.mp4" --thumbnail-path "{output_dir}/thumbnail/thumbnail.jpg" --privacy "private" --channel-id "UCyRJuLu9xr7mrRh-j52RQ9Q"
+```
+If the user specified a date/time for publishing, use `--publish-at "YYYY-MM-DD HH:MM"` (drop `--privacy`):
+```bash
+python scripts/publish_youtube.py --script-path "{output_dir}/script/script.json" --video-path "{output_dir}/final/final_video.mp4" --thumbnail-path "{output_dir}/thumbnail/thumbnail.jpg" --publish-at "YYYY-MM-DD HH:MM" --channel-id "UCyRJuLu9xr7mrRh-j52RQ9Q"
 ```
 
 ---
@@ -113,7 +113,18 @@ python scripts/analyze_trends.py \
   --channel-cache output/channel_analytics.json \
   --output-file output/trends_cache.json
 ```
-The trends script prints a **Top 10 Trending** table (with anime + format detected) and a **Suggested Topics** section automatically. Use the suggestions as the basis for AMV Step 2.
+
+If there are specific anime currently trending due to news/new seasons, add `--boost-anime`:
+```bash
+python scripts/analyze_trends.py \
+  --days 30 \
+  --min-duration 60 \
+  --channel-cache output/channel_analytics.json \
+  --output-file output/trends_cache.json \
+  --boost-anime "Solo Leveling" "Dandadan"
+```
+
+The trends script uses a built-in query bank (no `--queries` needed) and prints a **Top 10 Trending** table (with anime + format detected), franchises already on the channel, and a **Suggested Topics** section automatically. Use the suggestions as the basis for AMV Step 2.
 
 ### AMV Step 2: CHECKPOINT — Suggest Themes + Generate Draft Script
 - Propose 3–5 topic options based on trend + channel data
@@ -160,7 +171,7 @@ python scripts/analyze_amv.py --amv-path "{output_dir}/amv2/amv/amv_source.mp4" 
 Optional flags: `--max-scenes 12` (default), `--min-scene-duration 3.0` (default, seconds)
 
 ### AMV Step 5: CHECKPOINT — Review Clips
-- Tell the user to open each `amvN/frames/` folder and watch the clips
+- Tell the user to open each `amvN/frames/` folder and watch the clips (navigate manually)
 - User deletes any clips they don't want used in the video
 - **Wait for user confirmation** before proceeding to script generation
 - After confirmation, list how many clips remain per AMV so the user can verify
@@ -271,34 +282,34 @@ The compositor automatically:
 - Wait for user approval before publishing
 
 ### AMV Step 13: Publish to YouTube
-If the user specifies a date/time, always use `--publish-at` (schedules automatically — no `--privacy` needed):
-```bash
-python scripts/publish_youtube.py --script-path "{output_dir}/script/script.json" --video-path "{output_dir}/final/final_video.mp4" --thumbnail-path "{output_dir}/thumbnail/thumbnail.jpg" --publish-at "YYYY-MM-DD HH:MM" --channel-id "UCyRJuLu9xr7mrRh-j52RQ9Q"
-```
-Otherwise publish as private for manual review:
+Publish as private for manual review (default). If the user already specified a date/time, use `--publish-at` instead:
 ```bash
 python scripts/publish_youtube.py --script-path "{output_dir}/script/script.json" --video-path "{output_dir}/final/final_video.mp4" --thumbnail-path "{output_dir}/thumbnail/thumbnail.jpg" --privacy "private" --channel-id "UCyRJuLu9xr7mrRh-j52RQ9Q"
+```
+If the user specified a date/time for publishing, use `--publish-at "YYYY-MM-DD HH:MM"` (drop `--privacy`):
+```bash
+python scripts/publish_youtube.py --script-path "{output_dir}/script/script.json" --video-path "{output_dir}/final/final_video.mp4" --thumbnail-path "{output_dir}/thumbnail/thumbnail.jpg" --publish-at "YYYY-MM-DD HH:MM" --channel-id "UCyRJuLu9xr7mrRh-j52RQ9Q"
 ```
 
 ### AMV Step 14: Post-Publish Steps
 After the video is uploaded (still private), do all of these before making it public:
 
-1. **Update description with chapters** — add YouTube chapter timestamps so the progress bar shows named segments:
+1. **Update description (chapters + hashtags) + tags + make public** — run `update_video.py`:
+   ```bash
+   python scripts/update_video.py \
+     --video-id "{video_id}" \
+     --script-path "{output_dir}/script/script.json" \
+     --make-public
    ```
-   0:00 Intro
-   0:15 #5 — [Anime Name]
-   0:35 #4 — [Anime Name]
-   ...
-   ```
-   Use the cumulative scene durations from `script.json` to calculate timestamps. Also add hashtags at the end of the description (e.g., `#anime #animerecommendations`).
+   - Rebuilds the description with chapter timestamps generated from `script.json` scene durations
+   - Appends hashtags from the script tags list
+   - Expands tags with SEO keywords (series names, year, genre)
+   - `--make-public` changes privacy to public (skip this flag if `--publish-at` was used — it goes public automatically at scheduled time)
+   - Use `--dry-run` first to preview description + tags without calling the API
 
-2. **Update tags** — use the YouTube Data API `videos.update` to push comprehensive tags (series names, year, genre keywords).
+2. **Post engagement comment** — post a pinned comment asking viewers to engage (e.g., "Which anime from this list is your favorite? Drop it in the comments! 👇"). Then ask the user to go to YouTube Studio and pin it, as the API cannot pin comments directly.
 
-3. **Make video public** — only needed if published as `--privacy "private"`. If `--publish-at` was used, the video goes public automatically at the scheduled time — skip this step.
-
-4. **Post engagement comment** — use `commentThreads.insert` to post a pinned comment in English asking viewers to engage (e.g., "Which anime from this list is your favorite? Drop it in the comments! 👇"). Then ask the user to go to YouTube Studio and pin it, as the API cannot pin comments directly.
-
-5. **Generate community post** — run the community post generator and open YouTube Studio:
+3. **Generate community post** — run the community post generator:
    ```bash
    python scripts/post_community.py \
      --script-path "{output_dir}/script/script.json" \
@@ -306,9 +317,35 @@ After the video is uploaded (still private), do all of these before making it pu
      --output-dir "{output_dir}" \
      --channel-id "UCyRJuLu9xr7mrRh-j52RQ9Q"
    ```
-   This generates an English community post with a poll, prints the text to console, and opens YouTube Studio Community tab. Copy the `post_text` and create the poll manually — the API cannot create community posts directly.
+   Print the full `post_text` output to the conversation so the user can copy and paste it directly into YouTube Studio Community tab. Do **not** try to open YouTube Studio — the user will navigate there manually.
 
 **Note:** OAuth scope `youtube.force-ssl` is required for posting comments. If authentication fails, delete `.youtube_credentials.json` and re-authenticate.
+
+### AMV Step 15: Reply to Comments — run at the end of EVERY video pipeline
+
+**Always run this step after publishing** (main video + companion Short). Scans the entire channel for unreplied comments, not just recent videos.
+
+```bash
+# Dry-run first — review generated replies
+python scripts/reply_comments.py --channel-id UCyRJuLu9xr7mrRh-j52RQ9Q
+
+# Post the replies
+python scripts/reply_comments.py --channel-id UCyRJuLu9xr7mrRh-j52RQ9Q --post
+```
+
+Do NOT use `--recent-videos` — always scan all channel videos so older comments are never missed.
+
+Other options:
+```bash
+# Limit to a specific video
+python scripts/reply_comments.py --channel-id UCyRJuLu9xr7mrRh-j52RQ9Q --video-id {video_id} --post
+```
+
+- Replies are generated by Claude Haiku in English, regardless of comment language
+- Validates comments: skips spam, very short comments, and already-replied threads
+- Tracks replied comment IDs in `output/replied_comments.json` to avoid duplicates across runs
+- Default processes up to 20 comments per run (`--max-comments N` to change)
+- Always run dry-run first, review the generated replies, then re-run with `--post`
 
 ---
 
