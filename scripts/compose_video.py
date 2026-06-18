@@ -836,73 +836,6 @@ def find_scene_files(frames_dir: Path) -> list[Path]:
     return files
 
 
-def find_best_clip(
-    scene: dict,
-    clips: list,
-    analysis_scenes: list,
-    used_indices: set,
-    threshold: float = 0.12,
-) -> tuple[int | None, float]:
-    """Return (clip_index, score) for the best-matching AMV clip, or (None, 0.0).
-
-    Scores using Jaccard token overlap between scene narration/visual text and each
-    clip's Vision description. Looks up each clip's description by segment number
-    extracted from the filename (e.g. scene_05.mp4 -> segment 5), so the mapping
-    stays correct even after clips have been deleted from the frames folder.
-    """
-    import re
-
-    _STOPWORDS = {
-        "a", "an", "the", "is", "in", "on", "of", "and", "or", "to",
-        "it", "this", "that", "are", "was", "with", "for", "as", "at",
-        "be", "by", "from", "has", "have", "but", "not", "so", "its",
-        "they", "their", "there", "one", "two", "no", "if", "he", "she",
-        "we", "you", "do", "very",
-    }
-
-    def tokenize(text: str) -> set:
-        tokens = re.sub(r"[^a-z0-9\s]", " ", text.lower()).split()
-        return {t for t in tokens if t not in _STOPWORDS and len(t) > 2}
-
-    # Build segment_number -> description lookup from analysis
-    seg_desc: dict[int, str] = {}
-    for clip_scene in analysis_scenes:
-        seg_num = clip_scene.get("segment_number")
-        if seg_num is not None:
-            seg_desc[seg_num] = clip_scene.get("description", "")
-
-    query_parts = []
-    if scene.get("narration_text"):
-        query_parts.append(scene["narration_text"])
-    if scene.get("visual_prompt"):
-        query_parts.append(scene["visual_prompt"])
-
-    query_tokens = tokenize(" ".join(query_parts))
-    if not query_tokens:
-        return None
-
-    best_idx = None
-    best_score = 0.0
-
-    for i, clip_path in enumerate(clips):
-        if i in used_indices:
-            continue
-        # Extract segment number from filename: scene_05.mp4 -> 5
-        m = re.search(r"(\d+)", Path(clip_path).stem)
-        seg_num = int(m.group(1)) if m else None
-        description = seg_desc.get(seg_num, "") if seg_num is not None else ""
-        clip_tokens = tokenize(description)
-        if not clip_tokens:
-            continue
-        intersection = query_tokens & clip_tokens
-        union = query_tokens | clip_tokens
-        score = len(intersection) / len(union) if union else 0.0
-        if score > best_score:
-            best_score = score
-            best_idx = i
-
-    return best_idx if best_score >= threshold else None, best_score
-
 
 def main():
     args = parse_args()
@@ -989,9 +922,6 @@ def main():
     # Per-AMV clip routing: if --amv-base-dir is set, load clip lists per amv number
     amv_files: dict[int | str, list[Path]] = {}
     amv_idx: dict[int | str, int] = {}
-    amv_clip_durations: dict[int | str, list[float]] = {}
-    amv_analysis: dict[int | str, list[dict]] = {}
-    amv_used_clips: dict[int | str, set[int]] = {}
     if args.amv_base_dir:
         amv_base = Path(args.amv_base_dir)
         for n in range(1, 20):
@@ -1016,29 +946,8 @@ def main():
             for k, v in sorted(amv_files.items(), key=lambda x: str(x[0])):
                 parts.append(f"amv{k}={len(v)} clips")
             print(f"Per-AMV routing enabled: " + ", ".join(parts))
-            # Pre-load clip durations so we can consume the right number per scene
-            amv_clip_durations: dict[int | str, list[float]] = {}
-            for n, clips in amv_files.items():
-                amv_clip_durations[n] = []
-                for c in clips:
-                    try:
-                        amv_clip_durations[n].append(get_video_duration(c))
-                    except Exception:
-                        amv_clip_durations[n].append(10.0)
-            # Init used-clip tracker and load analysis descriptions for semantic matching
             for n in amv_files:
-                amv_used_clips[n] = set()
-            for n in amv_files:
-                if not isinstance(n, int):
-                    continue
-                analysis_path = amv_base / f"amv{n}" / "amv" / "amv_analysis.json"
-                if analysis_path.exists():
-                    try:
-                        data = json.loads(analysis_path.read_text(encoding="utf-8"))
-                        amv_analysis[n] = data.get("scenes", [])
-                        print(f"  Loaded AMV{n} analysis: {len(amv_analysis[n])} scenes")
-                    except Exception as e:
-                        print(f"  WARNING: Could not load amv_analysis.json for amv{n}: {e}")
+                amv_idx[n] = 0
 
     state = StateManager()
     state.update_step("step-05-video-composition", "running")
@@ -1093,58 +1002,9 @@ def main():
         elif amv_num and amv_num in amv_files:
             bg_clip = None
             clips = amv_files[amv_num]
-            durations = amv_clip_durations.get(amv_num, [])
             idx = amv_idx[amv_num]
-
-            # Semantic matching: try to find the clip whose description best matches the scene
-            analysis_scenes = amv_analysis.get(amv_num, [])
-            used = amv_used_clips.get(amv_num, set())
-
-            # Wrap around: if all clips already used, reset so we can cycle again
-            if len(used) >= len(clips):
-                amv_used_clips[amv_num] = set()
-                amv_idx[amv_num] = 0
-                used = set()
-                idx = 0
-
-            semantic_idx = None
-            semantic_score = 0.0
-            if analysis_scenes:
-                semantic_idx, semantic_score = find_best_clip(scene, clips, analysis_scenes, used)
-
-            if semantic_idx is not None:
-                clip_name = Path(clips[semantic_idx]).name
-                selected = [clips[semantic_idx]]
-                amv_used_clips[amv_num].add(semantic_idx)
-                if semantic_idx >= idx:
-                    amv_idx[amv_num] = semantic_idx + 1
-                print(f"    [semantic] scene {scene.get('scene_number','?')}: amv{amv_num} → {clip_name} (score={semantic_score:.2f})")
-            else:
-                # Sequential fallback: consume enough clips to fill target_duration
-                selected, accumulated = [], 0.0
-                j = idx % len(clips)  # wrap index if past end
-                start_j = j
-                while accumulated < target_duration:
-                    if j not in amv_used_clips[amv_num]:
-                        selected.append(clips[j])
-                        amv_used_clips[amv_num].add(j)
-                        accumulated += durations[j] if j < len(durations) else 10.0
-                    j = (j + 1) % len(clips)
-                    if j == start_j:
-                        break  # full cycle with nothing new — stop
-                if not selected:
-                    # Last resort: just take the next clip modulo len
-                    fallback_idx = idx % len(clips)
-                    selected = [clips[fallback_idx]]
-                    amv_used_clips[amv_num].add(fallback_idx)
-                    j = (fallback_idx + 1) % len(clips)
-                amv_idx[amv_num] = j
-
-            if len(selected) > 1:
-                concat_out = temp_dir / f"concat_amv{amv_num}_{i:02d}.mp4"
-                source = concat_clips_for_scene(selected, concat_out, _ffmpeg())
-            else:
-                source = selected[0]
+            source = clips[idx % len(clips)]
+            amv_idx[amv_num] = (idx + 1) % len(clips)
         elif source_files:
             bg_clip = None
             source = source_files[min(file_idx, len(source_files) - 1)]

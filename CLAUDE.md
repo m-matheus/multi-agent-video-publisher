@@ -195,7 +195,7 @@ Write to `{output_dir}/script/script.json` and show the script summary.
 
 **Claude generates the script directly — do NOT spawn a subagent for script generation.** Read the AMV analyses and write the script in the conversation.
 
-**No artificial duration cap** — set `target_duration_seconds` to reflect natural pacing (e.g., ~140–160s for a Top 5 ranking). Never force the video into a short format. Always use 2 normal scenes per rank.
+**Target duration for ranking videos** — set `target_duration_seconds` to ~300s (5 minutes) for Top 5 rankings. Use 3 normal scenes per rank plus a 3-scene intro block. Never force the video into a short format. The goal is depth and retention, not brevity.
 
 For **single AMV**, scene structure follows the analysis:
 - `duration_seconds` per scene ≈ clip durations from analysis (compositor auto-extends for TTS)
@@ -399,19 +399,27 @@ Only used when working with a local frame library. For AMV content, **omit `sear
 - rank_transition scenes MUST have short narration_text (e.g., `"Number five."`) for rank card sync
 
 #### Ranking videos (Top N) — required structure
-When the topic is a ranking (Top 5, Top 10, etc.), always generate scenes in this order:
+When the topic is a ranking (Top 5, Top 10, etc.), always generate scenes in this order.
+
+**Target duration: ~5 minutes (280–320s).** Ranking videos should be deep and engaging, not rushed. Use longer narration per rank to build storytelling depth. The intro block (scenes 1–3) must be especially compelling to maximize viewer retention.
 
 ```
-Scene 1:    scene_type="intro",           ~7s,  broad tags ("effects animated fighting"), amv=<varied>
-Scene 2:    scene_type="normal",          ~5s,  hook narration introducing the list, broad tags, amv=<varied>
+Scene 1:    scene_type="intro",           ~15s, high-energy hook — bold claim or teaser about #1, amv=<varied>
+Scene 2:    scene_type="normal",          ~10s, context/stakes — why this ranking matters, amv=<varied>
+Scene 3:    scene_type="normal",          ~10s, intro narration — set up the list and criteria, amv=<varied>
 
 For each rank from N down to 1:
   Scene X:    scene_type="rank_transition", ~2.5s, rank=N, name="<rank label>", amv=N, narration_text="Number N."
-  Scene X+1:  scene_type="normal",          ~8s,   rank=N, series-specific tags, amv=N, character intro
-  Scene X+2:  scene_type="normal",          ~7s,   rank=N, series-specific tags, amv=N, why they rank here
+  Scene X+1:  scene_type="normal",          ~18s,  rank=N, series-specific tags, amv=N, character intro + background
+  Scene X+2:  scene_type="normal",          ~16s,  rank=N, series-specific tags, amv=N, why they rank here + key moment
+  Scene X+3:  scene_type="normal",          ~12s,  rank=N, series-specific tags, amv=N, what sets them apart / analysis
 
-Last scene: scene_type="normal", ~14s, outro narration (CTA overlay auto-added by compositor), amv=<any>
+Last scene: scene_type="normal", ~20s, outro narration — wrap up + CTA (CTA overlay auto-added by compositor), amv=<any>
 ```
+
+**Intro retention rule**: The first 3 scenes are the most important for retention. Scene 1 must tease the #1 pick or ask a provocative question (e.g., "The number one spot will surprise you"). Scene 2 must give a reason to keep watching. Scene 3 sets up the criteria with energy.
+
+**3 normal scenes per rank**: Each rank gets intro + analysis + "what sets them apart" scenes so the narration has real depth. Never compress to 2 scenes unless the user explicitly asks for a shorter video.
 
 **Multi-AMV intro/hook**: For intro and hook scenes, assign `amv` values that span multiple different series (e.g., `amv=4` for intro, `amv=2` for scene 2) to give visual variety before the ranking begins. Avoid using `amv=1` for both.
 

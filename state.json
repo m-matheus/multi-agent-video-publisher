@@ -46,36 +46,36 @@
         "step-04-voice-narration": {
           "started_at": "2026-04-29T13:13:32.658429+00:00",
           "status": "completed",
-          "completed_at": "2026-06-14T19:45:33.672604+00:00",
+          "completed_at": "2026-06-15T15:13:24.522035+00:00",
           "outputs": {
-            "narration_path": "output\\20260614-top5-mha-strongest\\short_curiosity_allmight\\audio\\narration_full.mp3",
+            "narration_path": "output\\20260615-top5-aot-strongest\\short_curiosity_ymir\\audio\\narration_full.mp3",
             "segment_durations": [
-              3.5526530612244898,
-              10.997551020408164,
-              10.919183673469387,
-              10.187755102040816,
-              9.639183673469388
+              12.51265306122449,
+              19.565714285714286,
+              19.48734693877551,
+              17.94612244897959,
+              12.120816326530612
             ],
-            "total_duration": 46.65469387755102
+            "total_duration": 82.99102040816327
           }
         },
         "step-06-thumbnail-creation": {
           "started_at": "2026-04-29T13:13:34.704113+00:00",
           "status": "completed",
-          "completed_at": "2026-06-14T16:48:47.313465+00:00",
+          "completed_at": "2026-06-15T13:26:39.343504+00:00",
           "outputs": {
-            "thumbnail_path": "output\\20260614-top5-mha-strongest\\thumbnail\\thumbnail.jpg",
-            "request": "Create a viral YouTube thumbnail for an anime video.\n\nVideo Topic:\nTop 5 Strongest My Hero Academia Characters Ranked\n\nMain Character:\nIzuku Midoriya\n\nCharacters Featured:\nEndeavor, Katsuki Bakugo, All Might, All For One, Izuku Midoriya\n\nAnime / Series:\nMy Hero Academia\n\nTheme:\nPower ranking, legendary characters, strongest beings\n\nCreate a viral YouTube thumbnail for a single-franchise ranking video.\n\nComposition:\nThe franchise's main protagonist is the dominant figure — centered or slightly right,\nfilling roughly half the thumbnail in a powerful close shot. Render them in their\nmost iconic form (peak transformation, signature pose, or definitive battle stance).\n\nPlace 1–2 supporting characters from the same anime in the background — smaller,\npartially shadowed, partially behind the protagonist. Hint at the rest of the\nranked cast without crowding the frame. No ranking numbers anywhere.\n\nUse cinematic anime key art quality matching the show's official promotional posters.\nBackground should evoke an iconic location or signature visual effect from the series\n(flag of the crew, the show's signature aura color, a battlefield from a memorable arc, etc).\n\nUse dramatic rim lighting, strong glow effects, volumetric lighting and high contrast.\n\nTEXT RULES — critical:\n- The headline must be the franchise name treated as the show's official logo.\n  Use the show's actual logo aesthetic (color, font, weight, glow) — no generic fonts.\n  Place the logo prominently in the upper-left or upper-center.\n- Below or beside the logo, add 2–3 punchy words that describe the ranking\n  (e.g. \"TOP 5 FIGHTS\", \"STRONGEST BATTLES\", \"GREATEST DUELS\", \"BEST FIGHTS EVER\").\n  This subtitle should be smaller than the logo but still bold and fully visible.\n- DO NOT use generic clickbait phrases like \"YOU MISSED THIS\" or \"NOBODY WATCHES THIS\".\n- All text must be fully visible — never cropped at any edge.\n\nThumbnail should instantly read as \"this is THE ranking video for {SERIES}\".\n\nNo clutter. No UI elements. No subtitles. No ranking numbers on the image."
+            "thumbnail_path": "output\\20260615-top5-aot-strongest\\thumbnail\\thumbnail.jpg",
+            "request": "Create a viral YouTube thumbnail for an anime video.\n\nVideo Topic:\nTop 5 Strongest Attack on Titan Characters Ever Ranked\n\nMain Character:\nEren Yeager\n\nCharacters Featured:\nReiner Braun, Zeke Yeager, Levi Ackerman, Ymir Fritz, Eren Yeager\n\nAnime / Series:\nAttack On Titan\n\nTheme:\nPower ranking, legendary characters, strongest beings\n\nCreate a viral YouTube thumbnail for a single-franchise ranking video.\n\nComposition:\nThe franchise's main protagonist is the dominant figure — centered or slightly right,\nfilling roughly half the thumbnail in a powerful close shot. Render them in their\nmost iconic form (peak transformation, signature pose, or definitive battle stance).\n\nPlace 1–2 supporting characters from the same anime in the background — smaller,\npartially shadowed, partially behind the protagonist. Hint at the rest of the\nranked cast without crowding the frame. No ranking numbers anywhere.\n\nUse cinematic anime key art quality matching the show's official promotional posters.\nBackground should evoke an iconic location or signature visual effect from the series\n(flag of the crew, the show's signature aura color, a battlefield from a memorable arc, etc).\n\nUse dramatic rim lighting, strong glow effects, volumetric lighting and high contrast.\n\nTEXT RULES — critical:\n- The headline must be the franchise name treated as the show's official logo.\n  Use the show's actual logo aesthetic (color, font, weight, glow) — no generic fonts.\n  Place the logo prominently in the upper-left or upper-center.\n- Below or beside the logo, add 2–3 punchy words that describe the ranking\n  (e.g. \"TOP 5 FIGHTS\", \"STRONGEST BATTLES\", \"GREATEST DUELS\", \"BEST FIGHTS EVER\").\n  This subtitle should be smaller than the logo but still bold and fully visible.\n- DO NOT use generic clickbait phrases like \"YOU MISSED THIS\" or \"NOBODY WATCHES THIS\".\n- All text must be fully visible — never cropped at any edge.\n\nThumbnail should instantly read as \"this is THE ranking video for {SERIES}\".\n\nNo clutter. No UI elements. No subtitles. No ranking numbers on the image."
           }
         },
         "step-05-video-composition": {
           "started_at": "2026-04-29T13:25:53.641223+00:00",
           "status": "completed",
-          "completed_at": "2026-06-14T19:47:08.163702+00:00",
+          "completed_at": "2026-06-15T15:14:37.612428+00:00",
           "outputs": {
-            "video_path": "output\\20260614-top5-mha-strongest\\short_curiosity_allmight\\final\\final_short.mp4",
-            "duration": 46.541667,
-            "size_mb": 22.36
+            "video_path": "output\\20260615-top5-aot-strongest\\short_curiosity_ymir\\final\\final_short.mp4",
+            "duration": 81.333008,
+            "size_mb": 15.58
           }
         },
         "step-02-image-generation": {
@@ -120,43 +120,43 @@
         "step-bgm-fetch": {
           "started_at": "2026-04-29T22:42:57.906279+00:00",
           "status": "completed",
-          "completed_at": "2026-06-14T16:49:21.207458+00:00",
+          "completed_at": "2026-06-15T13:28:57.634765+00:00",
           "outputs": {
-            "bgm_path": "output\\20260614-top5-mha-strongest\\audio\\bgm.mp3"
+            "bgm_path": "output\\20260615-top5-aot-strongest\\audio\\bgm.mp3"
           }
         },
         "fetch-amv": {
           "started_at": "2026-04-30T00:25:21.441929+00:00",
           "status": "completed",
           "outputs": {
-            "amv_path": "output\\20260614-top5-mha-strongest\\amv3\\amv\\amv_source.mp4",
-            "title": "ALL MIGHT vs. ALL FOR ONE - Pt.2  [English Dub]",
-            "duration_seconds": 122
+            "amv_path": "output\\20260615-top5-aot-strongest\\amv2\\amv\\amv_source.mp4",
+            "title": "(AOT) Zeke Jaeger | Beast",
+            "duration_seconds": 260
           },
-          "completed_at": "2026-06-14T15:45:31.773210+00:00"
+          "completed_at": "2026-06-15T12:57:59.576913+00:00"
         },
         "analyze-amv": {
           "started_at": "2026-04-30T00:39:38.931132+00:00",
           "status": "completed",
           "outputs": {
-            "analysis_path": "output\\20260614-top5-mha-strongest\\amv4\\amv\\amv_analysis.json",
+            "analysis_path": "output\\20260615-top5-aot-strongest\\amv3\\amv\\amv_analysis.json",
             "scene_count": 12,
-            "total_duration_seconds": 366.48
+            "total_duration_seconds": 328.42
           },
-          "completed_at": "2026-06-14T17:49:29.329440+00:00"
+          "completed_at": "2026-06-15T13:14:43.570962+00:00"
         },
         "step-07-youtube-publishing": {
           "started_at": "2026-04-30T16:13:31.568495+00:00",
           "status": "completed",
-          "completed_at": "2026-06-14T19:49:04.455602+00:00",
+          "completed_at": "2026-06-15T15:16:42.071263+00:00",
           "outputs": {
-            "video_id": "TPeLSd1oiFM",
-            "url": "https://www.youtube.com/watch?v=TPeLSd1oiFM",
-            "studio_url": "https://studio.youtube.com/video/TPeLSd1oiFM/edit",
+            "video_id": "x8lbkj3fDEw",
+            "url": "https://www.youtube.com/watch?v=x8lbkj3fDEw",
+            "studio_url": "https://studio.youtube.com/video/x8lbkj3fDEw/edit",
             "privacy": "public",
             "publish_at": null,
             "channel_id": "UCyRJuLu9xr7mrRh-j52RQ9Q",
-            "title": "All Might Was Already Dying When He Met Deku #Shorts #MyHeroAcademia #MHA"
+            "title": "Ymir Fritz Was a Slave For 2000 Years — And Chose It #Shorts"
           }
         }
       }
