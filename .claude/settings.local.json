@@ -78,7 +78,32 @@
       "Bash(python scripts/generate_thumbnail.py --script-path output/top10-broken-abilities-20260429/script/script.json --output-dir output/top10-broken-abilities-20260429)",
       "Bash(python scripts/generate_voice.py --script-path \"output/top10-broken-abilities-20260429/script/script.json\" --output-dir \"output/top10-broken-abilities-20260429\")",
       "Bash(python scripts/compose_video.py --script-path \"output/top10-broken-abilities-20260429/script/script.json\" --frames-dir \"output/top10-broken-abilities-20260429/frames\" --audio-dir \"output/top10-broken-abilities-20260429/audio\" --output-dir \"output/top10-broken-abilities-20260429\")",
-      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d, indent=2\\)\\)\")"
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d, indent=2\\)\\)\")",
+      "Bash(python scripts/fetch_amv.py --url \"https://www.youtube.com/watch?v=BhB-ZsO1A1Q\" --output-dir \"output/20260615-top5-aot-strongest/amv1\")",
+      "Bash(python scripts/fetch_amv.py --url \"https://www.youtube.com/watch?v=nnWG4Vh8mX0\" --output-dir \"output/20260615-top5-aot-strongest/amv2\")",
+      "Bash(python scripts/fetch_amv.py --url \"https://www.youtube.com/watch?v=3AcBRIzTBEU\" --output-dir \"output/20260615-top5-aot-strongest/amv3\")",
+      "Bash(python scripts/fetch_amv.py --url \"https://www.youtube.com/watch?v=ZAdQ-57bA7E\" --output-dir \"output/20260615-top5-aot-strongest/amv4\")",
+      "Bash(python scripts/fetch_amv.py --url \"https://www.youtube.com/watch?v=p0FpdIRSMYU\" --output-dir \"output/20260615-top5-aot-strongest/amv5\")",
+      "Bash(python scripts/analyze_amv.py --amv-path \"output/20260615-top5-aot-strongest/amv1/amv/amv_source.mp4\" --output-dir \"output/20260615-top5-aot-strongest/amv1\")",
+      "Bash(python scripts/analyze_amv.py --amv-path \"output/20260615-top5-aot-strongest/amv2/amv/amv_source.mp4\" --output-dir \"output/20260615-top5-aot-strongest/amv2\")",
+      "Bash(python scripts/analyze_amv.py --amv-path \"output/20260615-top5-aot-strongest/amv3/amv/amv_source.mp4\" --output-dir \"output/20260615-top5-aot-strongest/amv3\")",
+      "Bash(python scripts/analyze_amv.py --amv-path \"output/20260615-top5-aot-strongest/amv4/amv/amv_source.mp4\" --output-dir \"output/20260615-top5-aot-strongest/amv4\")",
+      "Bash(python scripts/analyze_amv.py --amv-path \"output/20260615-top5-aot-strongest/amv5/amv/amv_source.mp4\" --output-dir \"output/20260615-top5-aot-strongest/amv5\")",
+      "Bash(python scripts/generate_thumbnail.py --script-path \"output/20260615-top5-aot-strongest/script/script.json\" --output-dir \"output/20260615-top5-aot-strongest\")",
+      "Bash(python scripts/generate_voice.py --script-path \"output/20260615-top5-aot-strongest/script/script.json\" --output-dir \"output/20260615-top5-aot-strongest\")",
+      "Bash(python scripts/fetch_bgm.py --query \"epic orchestral cinematic\" --output-dir \"output/20260615-top5-aot-strongest\")",
+      "Bash(python scripts/compose_video.py --script-path output/20260615-top5-aot-strongest/script/script.json --frames-dir output/20260615-top5-aot-strongest/amv1/frames --audio-dir output/20260615-top5-aot-strongest/audio --output-dir output/20260615-top5-aot-strongest --bgm-path output/20260615-top5-aot-strongest/audio/bgm.mp3 --bgm-volume 0.15 --amv-base-dir output/20260615-top5-aot-strongest --endcard-path channels/hakase-anime/assets/endcard.png --endcard-duration 10)",
+      "Bash(python scripts/publish_youtube.py --script-path output/20260615-top5-aot-strongest/script/script.json --video-path output/20260615-top5-aot-strongest/final/final_video.mp4 --thumbnail-path output/20260615-top5-aot-strongest/thumbnail/thumbnail.jpg --privacy private --channel-id UCyRJuLu9xr7mrRh-j52RQ9Q)",
+      "Bash(python scripts/update_video.py --video-id X4PtKAWgqrs --script-path output/20260615-top5-aot-strongest/script/script.json --make-public)",
+      "Bash(python scripts/post_community.py --script-path output/20260615-top5-aot-strongest/script/script.json --video-id X4PtKAWgqrs --output-dir output/20260615-top5-aot-strongest --channel-id UCyRJuLu9xr7mrRh-j52RQ9Q)",
+      "Bash(python scripts/generate_voice.py --script-path output/20260615-top5-aot-strongest/script/script_curiosity_ymir.json --output-dir output/20260615-top5-aot-strongest/short_curiosity_ymir --timestamps)",
+      "Bash(python scripts/generate_captions.py --script-path output/20260615-top5-aot-strongest/script/script_curiosity_ymir.json --audio-dir output/20260615-top5-aot-strongest/short_curiosity_ymir/audio --output-dir output/20260615-top5-aot-strongest/short_curiosity_ymir --shorts --color white)",
+      "Bash(python scripts/compose_video.py --script-path output/20260615-top5-aot-strongest/script/script_curiosity_ymir.json --frames-dir output/20260615-top5-aot-strongest/amv4/frames --audio-dir output/20260615-top5-aot-strongest/short_curiosity_ymir/audio --output-dir output/20260615-top5-aot-strongest/short_curiosity_ymir --bgm-path output/20260615-top5-aot-strongest/audio/bgm.mp3 --bgm-volume 0.15 --shorts --amv-base-dir output/20260615-top5-aot-strongest --endcard-path channels/hakase-anime/assets/endcard.png --endcard-duration 10 --captions-path output/20260615-top5-aot-strongest/short_curiosity_ymir/audio/captions.ass)",
+      "Bash(python scripts/publish_youtube.py --script-path output/20260615-top5-aot-strongest/script/script_curiosity_ymir.json --video-path output/20260615-top5-aot-strongest/short_curiosity_ymir/final/final_short.mp4 --thumbnail-path output/20260615-top5-aot-strongest/thumbnail/thumbnail.jpg --privacy public --channel-id UCyRJuLu9xr7mrRh-j52RQ9Q)",
+      "Skill(deep-research)",
+      "Skill(deep-research:*)",
+      "Bash(grep -E '\\\\.py$')",
+      "WebFetch(domain:developers.tiktok.com)"
     ]
   }
 }

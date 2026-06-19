@@ -44,43 +44,41 @@ def get_ffprobe_path() -> str:
 def load_config() -> dict:
     load_dotenv(PROJECT_ROOT / ".env")
     return {
-        # fal.ai
-        "fal_key": os.getenv("FAL_KEY"),
-        "default_image_model": os.getenv("DEFAULT_IMAGE_MODEL", "fal-ai/fast-sdxl"),
-        "default_video_model": os.getenv("DEFAULT_VIDEO_MODEL", "fal-ai/wan-2.1/image-to-video"),
         # ElevenLabs
         "elevenlabs_api_key": os.getenv("ELEVENLABS_API_KEY"),
         "elevenlabs_model": os.getenv("ELEVENLABS_MODEL", "eleven_v3"),
         "voice_id_anime": os.getenv("VOICE_ID_ANIME", "JBFqnCBsd6RMkjVDRZzb"),
-        "voice_id_history": os.getenv("VOICE_ID_HISTORY", ""),
         # YouTube
         "youtube_client_id": os.getenv("YOUTUBE_CLIENT_ID"),
         "youtube_client_secret": os.getenv("YOUTUBE_CLIENT_SECRET"),
         "youtube_credentials_path": os.getenv("YOUTUBE_CREDENTIALS_PATH", ".youtube_credentials.json"),
         "youtube_channel_id": os.getenv("YOUTUBE_CHANNEL_ID"),
-        "tenor_api_key": os.getenv("TENOR_API_KEY", "LIVDSRZULELA"),
         "max_parallel_image_requests": int(os.getenv("MAX_PARALLEL_IMAGE_REQUESTS", "5")),
         "max_parallel_video_requests": int(os.getenv("MAX_PARALLEL_VIDEO_REQUESTS", "3")),
         "output_base_dir": os.getenv("OUTPUT_BASE_DIR", "output"),
         # Durations per content type (seconds)
         "duration_anime_short": int(os.getenv("DURATION_ANIME_SHORT", "60")),
         "duration_anime_normal": int(os.getenv("DURATION_ANIME_NORMAL", "300")),
-        # Pixabay (music API restricted — use Freesound or YouTube URL mode instead)
-        "pixabay_api_key": os.getenv("PIXABAY_API_KEY"),
         # Freesound (background music search — free key at freesound.org/apiv2/apply/)
         "freesound_api_key": os.getenv("FREESOUND_API_KEY"),
-        "llm_provider": os.getenv("LLM_PROVIDER"),
-        "llm_model": os.getenv("LLM_MODEL"),
+        # OpenAI (thumbnail generation via Responses API)
         "openai_api_key": os.getenv("OPENAI_API_KEY"),
+        # Anthropic (community posts, comment replies, AMV analysis)
         "anthropic_api_key": os.getenv("ANTHROPIC_API_KEY"),
+        "anthropic_model_haiku": os.getenv("ANTHROPIC_MODEL_HAIKU", "claude-haiku-4-5-20251001"),
+        "analyze_amv_model": os.getenv("ANALYZE_AMV_MODEL", "claude-haiku-4-5-20251001"),
+        # TikTok (Content Posting API v2)
+        "tiktok_client_key": os.getenv("TIKTOK_CLIENT_KEY"),
+        "tiktok_client_secret": os.getenv("TIKTOK_CLIENT_SECRET"),
+        "tiktok_credentials_path": os.getenv("TIKTOK_CREDENTIALS_PATH", ".tiktok_credentials.json"),
     }
 
 
 def get_output_dir(topic: str) -> Path:
     sanitized = "".join(c if c.isalnum() or c in "-_ " else "" for c in topic)
     sanitized = sanitized.strip().replace(" ", "-").lower()[:50]
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    output_dir = OUTPUT_BASE / f"{sanitized}-{timestamp}"
+    date_prefix = datetime.now().strftime("%Y%m%d")
+    output_dir = OUTPUT_BASE / f"{date_prefix}-{sanitized}"
     output_dir.mkdir(parents=True, exist_ok=True)
     return output_dir
 

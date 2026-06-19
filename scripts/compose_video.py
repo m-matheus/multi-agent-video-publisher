@@ -19,7 +19,6 @@ from scripts.utils.file_helpers import ensure_dir, get_scene_files
 from scripts.utils.state_manager import StateManager
 
 FFMPEG = None
-FFPROBE = None
 
 
 def _ffmpeg():
@@ -30,33 +29,12 @@ def _ffmpeg():
     return FFMPEG
 
 
-def _ffprobe():
-    global FFPROBE
-    if FFPROBE is None:
-        import shutil
-        p = shutil.which("ffprobe")
-        if p:
-            FFPROBE = p
-        else:
-            # Try sibling of the imageio-ffmpeg binary
-            from pathlib import Path as _Path
-            ffmpeg_bin = _Path(get_ffmpeg_path())
-            for name in ("ffprobe.exe", "ffprobe"):
-                candidate = ffmpeg_bin.parent / name
-                if candidate.exists():
-                    FFPROBE = str(candidate)
-                    break
-            if not FFPROBE:
-                # Fall back to ffmpeg itself (it can read duration via -i + stderr parse)
-                FFPROBE = get_ffmpeg_path()
-    return FFPROBE
-
-
 def find_system_font() -> str | None:
     """Find a bold/impact font file for text overlays."""
     import platform
     if platform.system() == "Windows":
         candidates = [
+            "C:/Windows/Fonts/bahnschrift.ttf",   # bold condensed — less "AI" look
             "C:/Windows/Fonts/impact.ttf",
             "C:/Windows/Fonts/arialbd.ttf",
             "C:/Windows/Fonts/arial.ttf",
@@ -462,6 +440,10 @@ def parse_args():
                         help="Duration in seconds for the endcard clip (default: 20s)")
     parser.add_argument("--zoom-crop", action="store_true",
                         help="Apply 7%% zoom + center crop on video clips to remove edge watermarks")
+    parser.add_argument("--crop-corner", default=None,
+                        help="Per-AMV bottom-right corner crop to remove watermarks. "
+                             "Format: 'amv3:0.08' = crop 8%% from bottom and right of amv3 clips. "
+                             "Multiple AMVs: 'amv3:0.08,amv5:0.05'.")
     parser.add_argument("--shorts", action="store_true",
                         help="Output vertical 1080x1920 format for YouTube Shorts")
     parser.add_argument("--captions-path", default=None,
@@ -497,46 +479,6 @@ def get_video_duration(video_path: Path) -> float:
         raise RuntimeError(f"Could not determine duration of {video_path}")
 
 
-def get_media_info(file_path: Path) -> dict:
-    """Get media info (duration, width, height, has_video, has_audio)."""
-    import shutil
-    ffprobe = shutil.which("ffprobe")
-    if ffprobe:
-        cmd = [ffprobe, "-v", "quiet", "-print_format", "json", "-show_streams", "-show_format", str(file_path)]
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        info = json.loads(result.stdout)
-    else:
-        result = subprocess.run([_ffmpeg(), "-i", str(file_path)], capture_output=True, text=True)
-        import re
-        duration = 0.0
-        m = re.search(r"Duration:\s*(\d+):(\d+):(\d+\.\d+)", result.stderr)
-        if m:
-            h, m2, s = int(m.group(1)), int(m.group(2)), float(m.group(3))
-            duration = h * 3600 + m2 * 60 + s
-        wh = re.search(r"(\d{2,5})x(\d{2,5})", result.stderr)
-        width = int(wh.group(1)) if wh else 1920
-        height = int(wh.group(2)) if wh else 1080
-        has_video = "Video:" in result.stderr
-        has_audio = "Audio:" in result.stderr
-        return {"duration": duration, "width": width, "height": height, "has_video": has_video, "has_audio": has_audio}
-
-    has_video = any(s["codec_type"] == "video" for s in info.get("streams", []))
-    has_audio = any(s["codec_type"] == "audio" for s in info.get("streams", []))
-    duration = float(info.get("format", {}).get("duration", 0))
-
-    video_stream = next((s for s in info.get("streams", []) if s["codec_type"] == "video"), None)
-    width = int(video_stream.get("width", 1920)) if video_stream else 1920
-    height = int(video_stream.get("height", 1080)) if video_stream else 1080
-
-    return {
-        "duration": duration,
-        "width": width,
-        "height": height,
-        "has_video": has_video,
-        "has_audio": has_audio,
-    }
-
-
 def create_scene_clip(
     input_path: Path | None,
     output_path: Path,
@@ -548,6 +490,7 @@ def create_scene_clip(
     zoom_crop: bool = False,
     shorts: bool = False,
     background_clip: "Path | None" = None,
+    corner_crop: float = 0.0,
 ) -> Path:
     """
     Create a scene clip from input media with effects applied.
@@ -644,7 +587,12 @@ def create_scene_clip(
             # Letterbox: fit full 16:9 frame inside 9:16 with black bars
             vf = f"scale={out_w}:{out_h}:force_original_aspect_ratio=decrease,pad={out_w}:{out_h}:(ow-iw)/2:(oh-ih)/2:black,fps=24{drawtext}"
         else:
-            if zoom_crop:
+            if corner_crop > 0:
+                # Crop watermark from bottom-right, then upscale back to 1920x1080
+                kept_w = f"trunc(iw*{1.0 - corner_crop}/2)*2"
+                kept_h = f"trunc(ih*{1.0 - corner_crop}/2)*2"
+                base_scale = f"crop={kept_w}:{kept_h}:0:0,scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2"
+            elif zoom_crop:
                 base_scale = f"scale=2150:1210:force_original_aspect_ratio=increase,crop=1920:1080:0:0"
             else:
                 base_scale = f"scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2"
@@ -669,7 +617,11 @@ def create_scene_clip(
             # Letterbox: fit full 16:9 frame inside 9:16 with black bars
             vf = f"scale={out_w}:{out_h}:force_original_aspect_ratio=decrease,pad={out_w}:{out_h}:(ow-iw)/2:(oh-ih)/2:black,fps=24{drawtext}"
         else:
-            if zoom_crop:
+            if corner_crop > 0:
+                kept_w = f"trunc(iw*{1.0 - corner_crop}/2)*2"
+                kept_h = f"trunc(ih*{1.0 - corner_crop}/2)*2"
+                base_scale = f"crop={kept_w}:{kept_h}:0:0,scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2"
+            elif zoom_crop:
                 base_scale = f"scale=2150:1210:force_original_aspect_ratio=increase,crop=1920:1080:0:0"
             else:
                 base_scale = f"scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2"
@@ -704,103 +656,90 @@ def build_synced_narration(segments_dir: Path, scenes: list[dict], output_path: 
     """
     Rebuild narration audio locked to each scene's effective duration.
 
-    rank_transition scenes: instead of silence, play the opening of the NEXT scene's
-    narration so the rank announcement ("Number 5 — My Hero Academia") is heard while
-    the black card is visible. The following scene's audio then skips the borrowed portion.
-
-    Effective duration = max(script duration_seconds, remaining TTS audio length),
+    Effective duration = max(script duration_seconds, actual TTS audio length),
     so speech is never cut short when TTS runs longer than the script estimate.
     Returns (audio_path, effective_durations_list).
+
+    Each per-scene segment came directly from the ElevenLabs TTS as a complete
+    independent audio file — no slicing, no word-timestamp cuts. We pad each
+    segment's tail with silence to its effective duration, then concatenate all
+    of them in a single ffmpeg pass via filter_complex (NOT the concat demuxer
+    with -c copy — that path leaves MP3 priming-sample artifacts at boundaries).
     """
     tmp_dir = output_path.parent / "_narr_tmp"
     tmp_dir.mkdir(exist_ok=True)
 
-    # Seconds of silence added before the rank announcement ("Number X.") on the rank card.
-    PRE_RANK_SILENCE = 0.0
-    # Seconds of trailing silence added to the last normal scene before each rank card.
+    # Trailing silence after the last normal scene before each rank card.
+    # Lets the speech of "...changed everything." breathe before "Number five." kicks in.
     POST_RANK_SILENCE = 0.5
 
-    # Identify normal scenes immediately preceding a rank_transition.
     pre_transition_indices: set[int] = set()
     for i, scene in enumerate(scenes):
         if scene.get("scene_type") == "rank_transition" and i > 0:
             if scenes[i - 1].get("scene_type") != "rank_transition":
                 pre_transition_indices.add(i - 1)
 
-    padded_files = []
-    effective_durations = []
+    # Mono 24kHz s16le matches ElevenLabs output and avoids resample artifacts;
+    # the final encode goes to MP3 once at the concat step.
+    PCM_RATE = 24000
+
+    padded_files: list[Path] = []
+    effective_durations: list[float] = []
 
     for i, scene in enumerate(scenes):
         seg_path = segments_dir / f"segment_{i+1:02d}.mp3"
         script_dur = float(scene["duration_seconds"])
-        padded_path = tmp_dir / f"padded_{i+1:02d}.mp3"
+        padded_path = tmp_dir / f"padded_{i+1:02d}.wav"
 
-        if scene.get("scene_type") == "rank_transition":
-            # Play PRE_RANK_SILENCE then the rank card's own announcement segment.
-            effective_dur = script_dur
-            if seg_path.exists():
-                ann_dur = max(0.0, effective_dur - PRE_RANK_SILENCE)
-                cmd = [
-                    _ffmpeg(), "-y",
-                    "-f", "lavfi", "-i", f"anullsrc=r=24000:cl=mono",
-                    "-i", str(seg_path),
-                    "-filter_complex", (
-                        f"[0:a]atrim=end={PRE_RANK_SILENCE}[pre];"
-                        f"[1:a]atrim=end={ann_dur}[ann];"
-                        f"[pre][ann]concat=n=2:v=0:a=1[combined];"
-                        f"[combined]apad=whole_dur={effective_dur},atrim=end={effective_dur}[out]"
-                    ),
-                    "-map", "[out]",
-                    "-c:a", "libmp3lame", "-ar", "24000", "-ac", "1", "-q:a", "4",
-                    str(padded_path),
-                ]
+        if seg_path.exists():
+            try:
+                actual_dur = get_video_duration(seg_path)
+            except Exception:
+                actual_dur = script_dur
+            if scene.get("scene_type") == "rank_transition":
+                # Rank card: pad to script_dur (or actual TTS if longer) so the
+                # "Number X." announcement covers the full card display.
+                effective_dur = max(script_dur, actual_dur)
             else:
-                cmd = [
-                    _ffmpeg(), "-y",
-                    "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono",
-                    "-t", str(effective_dur),
-                    "-c:a", "libmp3lame", "-ar", "24000", "-ac", "1", "-q:a", "4",
-                    str(padded_path),
-                ]
-        else:
-            if seg_path.exists():
-                try:
-                    actual_dur = get_video_duration(seg_path)
-                except Exception:
-                    actual_dur = script_dur
                 trailing = POST_RANK_SILENCE if i in pre_transition_indices else 0.0
                 effective_dur = max(script_dur, actual_dur) + trailing
-                af = f"apad=whole_dur={effective_dur},atrim=end={effective_dur},aresample=24000"
-                cmd = [
-                    _ffmpeg(), "-y", "-i", str(seg_path),
-                    "-af", af,
-                    "-c:a", "libmp3lame", "-ar", "24000", "-ac", "1", "-q:a", "4",
-                    str(padded_path),
-                ]
-            else:
-                effective_dur = script_dur
-                cmd = [
-                    _ffmpeg(), "-y",
-                    "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono",
-                    "-t", str(effective_dur),
-                    "-c:a", "libmp3lame", "-ar", "24000", "-ac", "1", "-q:a", "4",
-                    str(padded_path),
-                ]
+            af = f"aresample={PCM_RATE},apad=whole_dur={effective_dur},atrim=end={effective_dur}"
+            cmd = [
+                _ffmpeg(), "-y", "-i", str(seg_path),
+                "-af", af,
+                "-c:a", "pcm_s16le", "-ar", str(PCM_RATE), "-ac", "1",
+                str(padded_path),
+            ]
+        else:
+            effective_dur = script_dur
+            cmd = [
+                _ffmpeg(), "-y",
+                "-f", "lavfi", "-i", f"anullsrc=r={PCM_RATE}:cl=mono",
+                "-t", str(effective_dur),
+                "-c:a", "pcm_s16le", "-ar", str(PCM_RATE), "-ac", "1",
+                str(padded_path),
+            ]
 
         effective_durations.append(effective_dur)
         subprocess.run(cmd, capture_output=True, check=True)
         padded_files.append(padded_path)
 
-    concat_list = tmp_dir / "concat.txt"
-    concat_list.write_text(
-        "\n".join(f"file '{str(f.absolute())}'" for f in padded_files) + "\n",
-        encoding="utf-8",
-    )
-    subprocess.run(
-        [_ffmpeg(), "-y", "-f", "concat", "-safe", "0",
-         "-i", str(concat_list), "-c:a", "copy", str(output_path)],
-        capture_output=True, check=True,
-    )
+    # Single-pass PCM concat → final MP3 encode. filter_complex concat (not the
+    # demuxer with -c copy) decodes continuously and re-encodes once.
+    cmd = [_ffmpeg(), "-y"]
+    for f in padded_files:
+        cmd.extend(["-i", str(f)])
+    n = len(padded_files)
+    concat_inputs = "".join(f"[{i}:a]" for i in range(n))
+    filter_str = f"{concat_inputs}concat=n={n}:v=0:a=1[aout]"
+    cmd.extend([
+        "-filter_complex", filter_str,
+        "-map", "[aout]",
+        "-c:a", "libmp3lame", "-ar", str(PCM_RATE), "-ac", "1", "-q:a", "4",
+        str(output_path),
+    ])
+    subprocess.run(cmd, capture_output=True, check=True)
+
     import shutil as _sh
     _sh.rmtree(tmp_dir, ignore_errors=True)
     return output_path, effective_durations
@@ -897,20 +836,39 @@ def find_scene_files(frames_dir: Path) -> list[Path]:
     return files
 
 
+
 def main():
     args = parse_args()
+
+    # Parse --crop-corner spec into a per-AMV map: {amv_num: crop_fraction}
+    corner_crop_map: dict[int | str, float] = {}
+    if args.crop_corner:
+        for entry in args.crop_corner.split(","):
+            entry = entry.strip()
+            if not entry or ":" not in entry:
+                continue
+            key, val = entry.split(":", 1)
+            key = key.strip().lower()
+            if key.startswith("amv"):
+                rest = key[3:]
+                amv_key: int | str
+                try:
+                    amv_key = int(rest)
+                except ValueError:
+                    amv_key = rest  # named AMV (amv_bc → "bc")
+                try:
+                    corner_crop_map[amv_key] = float(val)
+                except ValueError:
+                    print(f"  WARNING: invalid --crop-corner amount: {val!r}")
+        if corner_crop_map:
+            print(f"Per-AMV corner crop: {corner_crop_map}")
 
     # Auto-detect endcard if not explicitly provided
     if not args.endcard_path and not args.no_endcard:
         project_root = Path(__file__).parent.parent
         script_data = json.loads(Path(args.script_path).read_text(encoding="utf-8"))
         content_type = script_data.get("content_type", "anime")
-        channel_map = {
-            "anime": "hakase-anime",
-            "amv": "hakase-anime",
-            "history": "echoes-of-history",
-        }
-        channel_slug = channel_map.get(content_type, "hakase-anime")
+        channel_slug = "hakase-anime"
         default_endcard = project_root / "channels" / channel_slug / "assets" / "endcard.png"
         if default_endcard.exists():
             args.endcard_path = str(default_endcard)
@@ -964,7 +922,6 @@ def main():
     # Per-AMV clip routing: if --amv-base-dir is set, load clip lists per amv number
     amv_files: dict[int | str, list[Path]] = {}
     amv_idx: dict[int | str, int] = {}
-    amv_clip_durations: dict[int | str, list[float]] = {}
     if args.amv_base_dir:
         amv_base = Path(args.amv_base_dir)
         for n in range(1, 20):
@@ -989,15 +946,8 @@ def main():
             for k, v in sorted(amv_files.items(), key=lambda x: str(x[0])):
                 parts.append(f"amv{k}={len(v)} clips")
             print(f"Per-AMV routing enabled: " + ", ".join(parts))
-            # Pre-load clip durations so we can consume the right number per scene
-            amv_clip_durations: dict[int | str, list[float]] = {}
-            for n, clips in amv_files.items():
-                amv_clip_durations[n] = []
-                for c in clips:
-                    try:
-                        amv_clip_durations[n].append(get_video_duration(c))
-                    except Exception:
-                        amv_clip_durations[n].append(10.0)
+            for n in amv_files:
+                amv_idx[n] = 0
 
     state = StateManager()
     state.update_step("step-05-video-composition", "running")
@@ -1020,11 +970,28 @@ def main():
 
         if scene_type in ("rank_transition", "shorts_cta"):
             source = None
-            # For rank_transition, pick background from the scene's AMV pool (first clip)
             bg_clip = None
             if scene_type == "rank_transition":
-                if amv_num and amv_num in amv_files:
-                    bg_clip = amv_files[amv_num][0]
+                # Resolve which AMV pool to pull the background frame from. Prefer
+                # the scene's own `amv` field. If absent, infer from the NEXT non-
+                # rank-transition scene (which is the rank's actual content scene
+                # and always has `amv` set in standard ranking scripts) — this
+                # gives each rank card a unique series-specific background even
+                # when the script author forgot to set `amv` on the card itself.
+                bg_amv = amv_num
+                if not bg_amv:
+                    for j in range(i + 1, len(scenes)):
+                        nxt = scenes[j]
+                        if nxt.get("scene_type") != "rank_transition" and nxt.get("amv"):
+                            bg_amv = nxt.get("amv")
+                            break
+                if bg_amv and bg_amv in amv_files:
+                    # Use a different clip per rank by indexing on the rank number,
+                    # so successive cards from the same AMV (rare, but possible)
+                    # don't all extract the exact same frame.
+                    rank_n = scene.get("rank") or 0
+                    pool = amv_files[bg_amv]
+                    bg_clip = pool[rank_n % len(pool)]
                 elif source_files:
                     bg_clip = source_files[0]
         elif "clip_index" in scene and amv_num and amv_num in amv_files:
@@ -1034,25 +1001,10 @@ def main():
             source = clips[scene["clip_index"] % len(clips)]
         elif amv_num and amv_num in amv_files:
             bg_clip = None
-            # Per-AMV routing: consume enough clips to fill target_duration without looping
             clips = amv_files[amv_num]
-            durations = amv_clip_durations.get(amv_num, [])
             idx = amv_idx[amv_num]
-            selected, accumulated = [], 0.0
-            j = idx
-            while accumulated < target_duration and j < len(clips):
-                selected.append(clips[j])
-                accumulated += durations[j] if j < len(durations) else 10.0
-                j += 1
-            if not selected:
-                selected = [clips[min(idx, len(clips) - 1)]]
-                j = idx + 1
-            amv_idx[amv_num] = j
-            if len(selected) > 1:
-                concat_out = temp_dir / f"concat_amv{amv_num}_{i:02d}.mp4"
-                source = concat_clips_for_scene(selected, concat_out, _ffmpeg())
-            else:
-                source = selected[0]
+            source = clips[idx % len(clips)]
+            amv_idx[amv_num] = (idx + 1) % len(clips)
         elif source_files:
             bg_clip = None
             source = source_files[min(file_idx, len(source_files) - 1)]
@@ -1088,6 +1040,7 @@ def main():
                 text_overlay=overlay, scene_type=scene_type, scene=scene,
                 zoom_crop=args.zoom_crop, shorts=args.shorts,
                 background_clip=bg_clip,
+                corner_crop=corner_crop_map.get(amv_num, 0.0) if amv_num else 0.0,
             )
             scene_clips.append(clip_path)
         except subprocess.CalledProcessError as e:

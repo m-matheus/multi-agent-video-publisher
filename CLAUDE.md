@@ -12,7 +12,7 @@ For **anime content**, the **AMV Workflow** is the default. Ask the user for a Y
 ### Step 1: Script Generation (YOU do this directly)
 1. Ask the user for the **topic** and **content type** (anime or amv) if not provided
 2. Generate a `script.json` following the schema below
-3. Write it to `output/{topic}-{timestamp}/script/script.json`
+3. Write it to `output/{YYYYMMDD}-{topic}/script/script.json` (date prefix first, e.g. `20260603-top5-db-villains`)
 4. Show the script summary to the user for review
 
 ### Step 2: CHECKPOINT — Approve Script
@@ -40,10 +40,7 @@ python scripts/generate_thumbnail.py \
 ### Step 3: Fetch Anime Frames/Clips
 This step is handled by the AMV workflow — see AMV Step 3–4 below for downloading and analyzing the source AMV.
 
-The user can also provide a local folder of frames:
-```bash
-python scripts/fetch_frames.py --source local --local-dir "/path/to/frames" --output-dir "{output_dir}"
-```
+The user can also provide a local folder of frames by placing them directly in `{output_dir}/frames/` before running Step 6 (compose).
 
 ### Step 4: Generate Voice Narration
 ```bash
@@ -89,13 +86,13 @@ The compositor handles:
 - Wait for user approval before publishing
 
 ### Step 8: Publish to YouTube
-If the user specifies a date/time, always use `--publish-at` (schedules automatically — no `--privacy` needed):
-```bash
-python scripts/publish_youtube.py --script-path "{output_dir}/script/script.json" --video-path "{output_dir}/final/final_video.mp4" --thumbnail-path "{output_dir}/thumbnail/thumbnail.jpg" --publish-at "YYYY-MM-DD HH:MM" --channel-id "UCyRJuLu9xr7mrRh-j52RQ9Q"
-```
-Otherwise publish as private for manual review:
+Publish as private for manual review (default). If the user already specified a date/time, use `--publish-at` instead:
 ```bash
 python scripts/publish_youtube.py --script-path "{output_dir}/script/script.json" --video-path "{output_dir}/final/final_video.mp4" --thumbnail-path "{output_dir}/thumbnail/thumbnail.jpg" --privacy "private" --channel-id "UCyRJuLu9xr7mrRh-j52RQ9Q"
+```
+If the user specified a date/time for publishing, use `--publish-at "YYYY-MM-DD HH:MM"` (drop `--privacy`):
+```bash
+python scripts/publish_youtube.py --script-path "{output_dir}/script/script.json" --video-path "{output_dir}/final/final_video.mp4" --thumbnail-path "{output_dir}/thumbnail/thumbnail.jpg" --publish-at "YYYY-MM-DD HH:MM" --channel-id "UCyRJuLu9xr7mrRh-j52RQ9Q"
 ```
 
 ---
@@ -105,24 +102,39 @@ python scripts/publish_youtube.py --script-path "{output_dir}/script/script.json
 Use this workflow when the user wants to create an anime video. The full pipeline from trend research to publish.
 
 ### AMV Step 1: Trend Research
-Run both commands to understand the current landscape:
-```bash
-python scripts/analyze_trends.py \
-  --queries "top 5 strongest anime characters" "anime power ranking explained" "best anime to watch 2026" "anime characters ranked" "strongest anime villain" "anime lore explained" \
-  --days 30 \
-  --min-duration 60 \
-  --output-file output/trends_cache.json
-```
+Run channel analytics first, then trends (trends auto-loads the channel cache for dedup + suggestions):
 ```bash
 python scripts/analyze_channel.py --days 90 --output-file output/channel_analytics.json --channel-id UCyRJuLu9xr7mrRh-j52RQ9Q
 ```
-Read both output files. Use trends to find underserved topics (high views, few recent competitors). Use channel analytics to double-down on formats similar to top-performing videos.
+```bash
+python scripts/analyze_trends.py \
+  --days 30 \
+  --min-duration 60 \
+  --channel-cache output/channel_analytics.json \
+  --output-file output/trends_cache.json
+```
 
-### AMV Step 2: CHECKPOINT — Suggest Themes
+If there are specific anime currently trending due to news/new seasons, add `--boost-anime`:
+```bash
+python scripts/analyze_trends.py \
+  --days 30 \
+  --min-duration 60 \
+  --channel-cache output/channel_analytics.json \
+  --output-file output/trends_cache.json \
+  --boost-anime "Solo Leveling" "Dandadan"
+```
+
+The trends script uses a built-in query bank (no `--queries` needed) and prints a **Top 10 Trending** table (with anime + format detected), franchises already on the channel, and a **Suggested Topics** section automatically. Use the suggestions as the basis for AMV Step 2.
+
+### AMV Step 2: CHECKPOINT — Suggest Themes + Generate Draft Script
 - Propose 3–5 topic options based on trend + channel data
 - **Wait for user to pick a theme**
-- Once theme is chosen, tell the user exactly what AMV(s) to search for on YouTube (one per rank for Top N videos, with suggested search queries)
-- **Wait for user to return with AMV URL(s)** before proceeding
+- Once theme is chosen, **generate the full draft script immediately** (YOU do this, same rules as AMV Step 7 below, but without AMV analysis — write the narration based on your knowledge of the anime/characters/topic)
+- Show the script summary (title, scene list, narration preview)
+- For each rank, summarize in 1–2 sentences what the narration says and what visual moments would best illustrate it (e.g., "Rank 5 – Orochimaru: narration covers his immortality experiments and Sannin history. Best clips: Orochimaru vs Hiruzen, cursed mark application, snake summoning")
+- **Wait for user to return with AMV URL(s)** — the per-rank visual hints help them pick the right AMV
+
+The draft script may be lightly revised after AMV analysis (AMV Step 6) to align `visual_prompt` fields with what the AMVs actually show, but the narration should stay largely unchanged.
 
 ### AMV Step 3: Download AMV(s)
 **Single AMV:**
@@ -159,19 +171,21 @@ python scripts/analyze_amv.py --amv-path "{output_dir}/amv2/amv/amv_source.mp4" 
 Optional flags: `--max-scenes 12` (default), `--min-scene-duration 3.0` (default, seconds)
 
 ### AMV Step 5: CHECKPOINT — Review Clips
-- Tell the user to open each `amvN/frames/` folder and watch the clips
+- Tell the user to open each `amvN/frames/` folder and watch the clips (navigate manually)
 - User deletes any clips they don't want used in the video
 - **Wait for user confirmation** before proceeding to script generation
 - After confirmation, list how many clips remain per AMV so the user can verify
 
-### AMV Step 6: CHECKPOINT — Show AMV Analysis
+### AMV Step 6: CHECKPOINT — Review AMV Analysis & Align Script
 - Read all `amv_analysis.json` files
 - Present: total duration, number of scenes, brief description of each scene per AMV
-- Ask the user for the **video topic/angle** (e.g., "narrate this as a One Piece power ranking")
-- Wait for user confirmation before generating the script
+- Compare the AMV clip descriptions against the draft script's `visual_prompt` fields
+- If a scene's `visual_prompt` doesn't match what the clips actually show, update it to reflect reality
+- Narration text stays unchanged unless the user requests a tone/topic change
+- Ask the user to confirm before proceeding to voice generation
 
-### AMV Step 7: Generate Script from AMV Analysis (YOU do this)
-Read the analysis file(s) and generate `script.json`. For **multi-AMV**:
+### AMV Step 7: Revise Script if Needed (YOU do this)
+If the AMV analysis revealed significant mismatches between the draft script and the available clips, update `script.json`:
 - Use the `amv` field (1–N) to route each scene to the correct AMV's clip pool
 - Scene durations should match the content rhythm (not necessarily the raw clip durations)
 - Narration drives the pacing — the compositor extends scenes to fit TTS audio
@@ -181,7 +195,7 @@ Write to `{output_dir}/script/script.json` and show the script summary.
 
 **Claude generates the script directly — do NOT spawn a subagent for script generation.** Read the AMV analyses and write the script in the conversation.
 
-**No artificial duration cap** — set `target_duration_seconds` to reflect natural pacing (e.g., ~140–160s for a Top 5 ranking). Never force the video into a short format. Always use 2 normal scenes per rank.
+**Target duration for ranking videos** — set `target_duration_seconds` to ~300s (5 minutes) for Top 5 rankings. Use 3 normal scenes per rank plus a 3-scene intro block. Never force the video into a short format. The goal is depth and retention, not brevity.
 
 For **single AMV**, scene structure follows the analysis:
 - `duration_seconds` per scene ≈ clip durations from analysis (compositor auto-extends for TTS)
@@ -268,34 +282,34 @@ The compositor automatically:
 - Wait for user approval before publishing
 
 ### AMV Step 13: Publish to YouTube
-If the user specifies a date/time, always use `--publish-at` (schedules automatically — no `--privacy` needed):
-```bash
-python scripts/publish_youtube.py --script-path "{output_dir}/script/script.json" --video-path "{output_dir}/final/final_video.mp4" --thumbnail-path "{output_dir}/thumbnail/thumbnail.jpg" --publish-at "YYYY-MM-DD HH:MM" --channel-id "UCyRJuLu9xr7mrRh-j52RQ9Q"
-```
-Otherwise publish as private for manual review:
+Publish as private for manual review (default). If the user already specified a date/time, use `--publish-at` instead:
 ```bash
 python scripts/publish_youtube.py --script-path "{output_dir}/script/script.json" --video-path "{output_dir}/final/final_video.mp4" --thumbnail-path "{output_dir}/thumbnail/thumbnail.jpg" --privacy "private" --channel-id "UCyRJuLu9xr7mrRh-j52RQ9Q"
+```
+If the user specified a date/time for publishing, use `--publish-at "YYYY-MM-DD HH:MM"` (drop `--privacy`):
+```bash
+python scripts/publish_youtube.py --script-path "{output_dir}/script/script.json" --video-path "{output_dir}/final/final_video.mp4" --thumbnail-path "{output_dir}/thumbnail/thumbnail.jpg" --publish-at "YYYY-MM-DD HH:MM" --channel-id "UCyRJuLu9xr7mrRh-j52RQ9Q"
 ```
 
 ### AMV Step 14: Post-Publish Steps
 After the video is uploaded (still private), do all of these before making it public:
 
-1. **Update description with chapters** — add YouTube chapter timestamps so the progress bar shows named segments:
+1. **Update description (chapters + hashtags) + tags + make public** — run `update_video.py`:
+   ```bash
+   python scripts/update_video.py \
+     --video-id "{video_id}" \
+     --script-path "{output_dir}/script/script.json" \
+     --make-public
    ```
-   0:00 Intro
-   0:15 #5 — [Anime Name]
-   0:35 #4 — [Anime Name]
-   ...
-   ```
-   Use the cumulative scene durations from `script.json` to calculate timestamps. Also add hashtags at the end of the description (e.g., `#anime #animerecommendations`).
+   - Rebuilds the description with chapter timestamps generated from `script.json` scene durations
+   - Appends hashtags from the script tags list
+   - Expands tags with SEO keywords (series names, year, genre)
+   - `--make-public` changes privacy to public (skip this flag if `--publish-at` was used — it goes public automatically at scheduled time)
+   - Use `--dry-run` first to preview description + tags without calling the API
 
-2. **Update tags** — use the YouTube Data API `videos.update` to push comprehensive tags (series names, year, genre keywords).
+2. **Post engagement comment** — post a pinned comment asking viewers to engage (e.g., "Which anime from this list is your favorite? Drop it in the comments! 👇"). Then ask the user to go to YouTube Studio and pin it, as the API cannot pin comments directly.
 
-3. **Make video public** — only needed if published as `--privacy "private"`. If `--publish-at` was used, the video goes public automatically at the scheduled time — skip this step.
-
-4. **Post engagement comment** — use `commentThreads.insert` to post a pinned comment in English asking viewers to engage (e.g., "Which anime from this list is your favorite? Drop it in the comments! 👇"). Then ask the user to go to YouTube Studio and pin it, as the API cannot pin comments directly.
-
-5. **Generate community post** — run the community post generator and open YouTube Studio:
+3. **Generate community post** — run the community post generator:
    ```bash
    python scripts/post_community.py \
      --script-path "{output_dir}/script/script.json" \
@@ -303,9 +317,35 @@ After the video is uploaded (still private), do all of these before making it pu
      --output-dir "{output_dir}" \
      --channel-id "UCyRJuLu9xr7mrRh-j52RQ9Q"
    ```
-   This generates an English community post with a poll, prints the text to console, and opens YouTube Studio Community tab. Copy the `post_text` and create the poll manually — the API cannot create community posts directly.
+   Print the full `post_text` output to the conversation so the user can copy and paste it directly into YouTube Studio Community tab. Do **not** try to open YouTube Studio — the user will navigate there manually.
 
 **Note:** OAuth scope `youtube.force-ssl` is required for posting comments. If authentication fails, delete `.youtube_credentials.json` and re-authenticate.
+
+### AMV Step 15: Reply to Comments — run at the end of EVERY video pipeline
+
+**Always run this step after publishing** (main video + companion Short). Scans the entire channel for unreplied comments, not just recent videos.
+
+```bash
+# Dry-run first — review generated replies
+python scripts/reply_comments.py --channel-id UCyRJuLu9xr7mrRh-j52RQ9Q
+
+# Post the replies
+python scripts/reply_comments.py --channel-id UCyRJuLu9xr7mrRh-j52RQ9Q --post
+```
+
+Do NOT use `--recent-videos` — always scan all channel videos so older comments are never missed.
+
+Other options:
+```bash
+# Limit to a specific video
+python scripts/reply_comments.py --channel-id UCyRJuLu9xr7mrRh-j52RQ9Q --video-id {video_id} --post
+```
+
+- Replies are generated by Claude Haiku in English, regardless of comment language
+- Validates comments: skips spam, very short comments, and already-replied threads
+- Tracks replied comment IDs in `output/replied_comments.json` to avoid duplicates across runs
+- Default processes up to 20 comments per run (`--max-comments N` to change)
+- Always run dry-run first, review the generated replies, then re-run with `--post`
 
 ---
 
@@ -359,27 +399,42 @@ Only used when working with a local frame library. For AMV content, **omit `sear
 - rank_transition scenes MUST have short narration_text (e.g., `"Number five."`) for rank card sync
 
 #### Ranking videos (Top N) — required structure
-When the topic is a ranking (Top 5, Top 10, etc.), always generate scenes in this order:
+When the topic is a ranking (Top 5, Top 10, etc.), always generate scenes in this order.
+
+**Target duration: ~5 minutes (280–320s).** Ranking videos should be deep and engaging, not rushed. Use longer narration per rank to build storytelling depth. The intro block (scenes 1–3) must be especially compelling to maximize viewer retention.
 
 ```
-Scene 1:    scene_type="intro",           ~7s,  broad tags ("effects animated fighting"), amv=<varied>
-Scene 2:    scene_type="normal",          ~5s,  hook narration introducing the list, broad tags, amv=<varied>
+Scene 1:    scene_type="intro",           ~15s, high-energy hook — bold claim or teaser about #1, amv=<varied>
+Scene 2:    scene_type="normal",          ~10s, context/stakes — why this ranking matters, amv=<varied>
+Scene 3:    scene_type="normal",          ~10s, intro narration — set up the list and criteria, amv=<varied>
 
 For each rank from N down to 1:
-  Scene X:    scene_type="rank_transition", ~2.5s, rank=N, name="<Anime Title>", narration_text="Number N."
-  Scene X+1:  scene_type="normal",          ~8s,   rank=N, series-specific tags, amv=N, character intro
-  Scene X+2:  scene_type="normal",          ~7s,   rank=N, series-specific tags, amv=N, why they rank here
+  Scene X:    scene_type="rank_transition", ~2.5s, rank=N, name="<rank label>", amv=N, narration_text="Number N."
+  Scene X+1:  scene_type="normal",          ~18s,  rank=N, series-specific tags, amv=N, character intro + background
+  Scene X+2:  scene_type="normal",          ~16s,  rank=N, series-specific tags, amv=N, why they rank here + key moment
+  Scene X+3:  scene_type="normal",          ~12s,  rank=N, series-specific tags, amv=N, what sets them apart / analysis
 
-Last scene: scene_type="normal", ~14s, outro narration (CTA overlay auto-added by compositor), amv=<any>
+Last scene: scene_type="normal", ~20s, outro narration — wrap up + CTA (CTA overlay auto-added by compositor), amv=<any>
 ```
+
+**Intro retention rule**: The first 3 scenes are the most important for retention. Scene 1 must tease the #1 pick or ask a provocative question (e.g., "The number one spot will surprise you"). Scene 2 must give a reason to keep watching. Scene 3 sets up the criteria with energy.
+
+**3 normal scenes per rank**: Each rank gets intro + analysis + "what sets them apart" scenes so the narration has real depth. Never compress to 2 scenes unless the user explicitly asks for a shorter video.
 
 **Multi-AMV intro/hook**: For intro and hook scenes, assign `amv` values that span multiple different series (e.g., `amv=4` for intro, `amv=2` for scene 2) to give visual variety before the ranking begins. Avoid using `amv=1` for both.
 
 **Last scene duration**: After voice generation, check the actual TTS duration for the last scene and set `duration_seconds` to exactly that value. No buffer needed.
 
-**`name` field on rank transitions**: Always include `"name": "<Anime Title>"` on every `rank_transition` scene. The compositor renders the anime title above the gold rank number on the black card.
+**`name` field on rank transitions**: Always include `"name"` on every `rank_transition` scene. The compositor renders this label above the gold rank number on the black card. **Pick the label by ranking type:**
+- **Fight ranking** (Top 5 fights, best battles, etc.) → `"Fighter A vs Fighter B"` (both combatants — e.g. `"Luffy vs Kaido"`, `"Zoro vs Mihawk"`)
+- **Character ranking** (Top 5 villains, strongest characters) → character name only (e.g. `"Kaido"`, `"Eren"`)
+- **Anime / arc ranking** (Top 5 anime of all time, best arcs) → series or arc title (e.g. `"Demon Slayer"`, `"Marineford Arc"`)
 
 **Rank transition narration sync**: Every `rank_transition` scene MUST have a short `narration_text` (e.g., `"Number five."`, `"Number one."`) so the rank card reveal syncs with the audio announcement. The compositor holds the rank card until TTS finishes.
+
+**`amv` field on rank transitions**: In multi-AMV ranking videos, every `rank_transition` MUST include `"amv": N` matching the rank's AMV (e.g. rank #5 from amv=2 → the rank card has `amv=2`). The compositor uses this to extract the blurred background frame from the correct AMV. Without it, all rank cards fall back to the same global frame and look identical.
+
+**No arc/location announcement after rank cards**: Do NOT open the post-rank-card narration with the arc or location name (e.g. avoid "East Blue. Roronoa Zoro versus Dracule Mihawk."). Go straight into the matchup ("Roronoa Zoro versus Dracule Mihawk."). The arc/location can be woven into the body of the narration if relevant, but never as a standalone opening sentence.
 
 **Per-rank `search_tags` rule**: Every normal scene narrating a character MUST use that character's series-specific tags. All scenes within the same rank must share the same series tags. Examples:
 - Rank about Alucard (Hellsing) → `hellsing animated` for all scenes in that rank
@@ -399,26 +454,65 @@ Last scene: scene_type="normal", ~14s, outro narration (CTA overlay auto-added b
 
 ---
 
-## Companion Short (Curiosidade) — Default After Every Video
+## Companion Shorts — Default After Every Video
 
-After the main video is approved and published, **always** offer to generate a companion Curiosidade Short — a 40–55s vertical Short about one surprising fact related to one of the anime featured in the main video. This is the standard companion content, not a mini-summary.
+After the main video is approved and published, **always** offer to generate a companion Short. There are three Short formats available:
+
+| Format | Slug | What it is | Best for |
+|--------|------|-----------|----------|
+| **Curiosidade** | `curiosity` | Surprising fact about an anime/character | Lore-heavy anime |
+| **Iconic Moment Recap** | `recap` | One iconic scene narrated with context | Emotionally strong moments |
+| **Hidden Detail** | `detail` | Overlooked detail / foreshadowing reveal | Any anime |
+
+Ask the user: *"Quer fazer um Short complementar? Posso fazer uma Curiosidade, um Iconic Moment Recap ou um Hidden Detail. Qual prefere — e sobre qual anime?"*
+
+After the user picks format and anime, also ask:
+> "Posso usar os frames do `amv{N}/frames/` já extraído, ou quer usar um AMV novo para o Short?"
+
+---
+
+### Short Script Quality Rules (applies to ALL formats)
+
+These rules override the generic script guidelines for any Short (vertical, `--shorts`):
+
+**Hook rule — 0–2 second claim:**
+- Scene 1 must land the main claim by second 2. No setup, no context, no "today we'll talk about".
+- Use bold, specific, and falsifiable statements: *"Este personagem foi planejado para morrer no episódio 1."*
+- Never open with a question — open with a statement that forces the viewer to think "wait, really?"
+
+**5-beat structure (all Short formats):**
+```
+Beat 1 — CLAIM     (~3s):  One bold, surprising statement. The hook.
+Beat 2 — CONFLICT  (~8s):  The context that makes the claim surprising or meaningful.
+Beat 3 — REVEAL    (~15s): The actual information — the fact, the moment, the detail.
+Beat 4 — IMPACT    (~10s): Why this matters. What it changes. What the fan community doesn't realize.
+Beat 5 — CTA       (~5s):  Direct question to the viewer ("Você sabia disso? Comenta aí!")
+```
+Total: 40–55s. No narration during scene 1 transitions if the visual does the work.
+
+**Pacing:**
+- Narration must be fast-paced and energetic — no long pauses between sentences
+- Each beat should feel like it's escalating
+- CTA must be a genuine question that invites debate (not "like and subscribe")
+
+---
 
 ### AMV Decision Checkpoint
 
-Before starting, ask the user:
-> "Which anime from the main video should the curiosidade Short feature? I can use the existing frames from `amv{N}/frames/`. Would you prefer to use a new AMV for this Short?"
+Before starting any Short, ask the user:
+> "Posso usar os frames existentes de `amv{N}/frames/`, ou quer baixar um AMV novo para este Short?"
 
 - **Use existing frames** → proceed directly with frames already in `{output_dir}/amvN/frames/`
 - **New AMV** (user provides URL) → download and analyze first:
   ```bash
-  python scripts/fetch_amv.py --url "{new_amv_url}" --output-dir "{output_dir}/amv_curiosity"
-  python scripts/analyze_amv.py --amv-path "{output_dir}/amv_curiosity/amv/amv_source.mp4" --output-dir "{output_dir}/amv_curiosity"
+  python scripts/fetch_amv.py --url "{new_amv_url}" --output-dir "{output_dir}/amv_short"
+  python scripts/analyze_amv.py --amv-path "{output_dir}/amv_short/amv/amv_source.mp4" --output-dir "{output_dir}/amv_short"
   ```
-  Then use `--frames-dir "{output_dir}/amv_curiosity/frames"` and `--amv-base-dir "{output_dir}/amv_curiosity"` in the compose step.
+  Then use `--frames-dir "{output_dir}/amv_short/frames"` and `--amv-base-dir "{output_dir}/amv_short"` in the compose step.
 
-### Curiosidade Pre-Step: Check Existing Channel Videos
+### Short Pre-Step: Check Existing Channel Videos
 
-Before writing any Curiosidade script, fetch the channel's recent uploads and check for topic overlap:
+Before writing any Short script, fetch the channel's recent uploads and check for topic overlap:
 
 ```python
 youtube.search().list(
@@ -442,10 +536,12 @@ Before generating captions, choose `--color` based on the anime's mood:
 
 ### Curiosidade Step 1: Generate script_curiosity_{anime}.json (YOU do this)
 - Write to `{output_dir}/script/script_curiosity_{anime_slug}.json`
-- **Structure:** 4–5 scenes, 40–55s total
-- **Scene 1** (~5s): hook — one surprising statement about the anime/character
-- **Scenes 2–4** (~10s each): explain the curiosidade with details
-- **Scene 5** (~5s): outro CTA — ask viewers to comment + follow
+- **Structure:** 5 beats, 40–55s total (follow the **5-beat structure** above)
+- **Scene 1** (~3s): CLAIM — bold statement, the hook
+- **Scene 2** (~8s): CONFLICT — context that makes the claim surprising
+- **Scenes 3** (~15s): REVEAL — the actual fact/detail
+- **Scene 4** (~10s): IMPACT — why it matters / what fans miss
+- **Scene 5** (~5s): CTA — direct question to viewers
 - **Same `amv` field** as the main video (pointing to the correct AMV)
 - **Title** must contain `#Shorts`
 - **No `search_tags`** — frames already extracted
@@ -488,7 +584,7 @@ python scripts/compose_video.py \
 
 > **`--zoom-crop` is opt-in only** — add it only if explicitly requested for this Short.
 
-### Curiosidade Step 5: Publish
+### Curiosidade Step 5: Publish to YouTube
 ```bash
 python scripts/publish_youtube.py \
   --script-path "{output_dir}/script/script_curiosity_{anime}.json" \
@@ -498,144 +594,75 @@ python scripts/publish_youtube.py \
   --channel-id "UCyRJuLu9xr7mrRh-j52RQ9Q"
 ```
 
+### Curiosidade Step 6: Publish to TikTok
+After YouTube upload succeeds, publish the same video to TikTok (requires credentials):
+```bash
+python scripts/publish_tiktok.py \
+  --script-path "{output_dir}/script/script_curiosity_{anime}.json" \
+  --video-path "{output_dir}/short_curiosity_{anime}/final/final_short.mp4" \
+  --privacy SELF_ONLY
+```
+- Default privacy is `SELF_ONLY` (private) for manual review — user changes to public in TikTok Studio
+- First-time setup: run `python scripts/publish_tiktok.py --check-auth` to complete OAuth
+- TikTok credentials saved at `.tiktok_credentials.json` (gitignored)
+- If `TIKTOK_CLIENT_KEY` is missing from `.env`, skip this step and remind the user to configure it
+
 ---
 
+## Iconic Moment Recap Short
+
+A Short (40–55s) narrating a single iconic scene: the context, the moment itself, and its lasting impact.
+
+**When to use:** User asks for a recap of a specific scene, fight, or arc moment.
+
+### Recap Script: script_recap_{anime}.json (YOU do this)
+- Write to `{output_dir}/script/script_recap_{anime_slug}.json`
+- **Title** must contain `#Shorts`
+- **5-beat structure** (same as Curiosidade):
+  - Scene 1 (~3s): CLAIM — "Este momento mudou o anime para sempre" / tease what happens
+  - Scene 2 (~8s): CONFLICT — who are the characters, what led to this moment
+  - Scene 3 (~15s): REVEAL — narrate the moment itself in full sensory detail
+  - Scene 4 (~10s): IMPACT — what changed after this / why fans remember it
+  - Scene 5 (~5s): CTA — "Qual cena te marcou mais nesse anime? Comenta!"
+- `amv` field must point to the correct AMV with clips of that moment
+
+### Recap Pipeline
+Same steps as Curiosidade (Steps 2–6 above), with these filename substitutions:
+- Script: `script_recap_{anime_slug}.json`
+- Output dir: `{output_dir}/short_recap_{anime_slug}/`
+- Final video: `{output_dir}/short_recap_{anime_slug}/final/final_short.mp4`
+
 ---
 
-## History Workflow (Echoes of History — AI-generated images)
+## Hidden Detail Short
 
-Use this workflow for the **Echoes of History** channel (`content_type: "history"`). Videos are ~40 minutes long, using AI-generated images (no AMV downloads).
+A Short (40–55s) revealing a detail, foreshadowing, or easter egg most viewers missed.
 
-### History Step 1: Trend Research
-```bash
-python scripts/analyze_trends.py \
-  --queries "history documentary" "ancient civilizations" "world war secrets" "roman empire history" "greatest empires history" "historical mysteries explained" \
-  --days 30 \
-  --min-duration 300 \
-  --output-file output/trends_history.json
-```
-```bash
-python scripts/analyze_channel.py --days 90 --output-file output/channel_history.json --channel-id {HISTORY_CHANNEL_ID}
-```
+**When to use:** User asks for a "detalhe que ninguém viu" or foreshadowing Short.
 
-### History Step 2: CHECKPOINT — Suggest Themes
-- Read `output/trends_history.json`
-- Propose 3–5 topic options (prioritize underserved niches with high views)
-- **Wait for user to pick a theme** before generating the script
+### Hidden Detail Script: script_detail_{anime}.json (YOU do this)
+- Write to `{output_dir}/script/script_detail_{anime_slug}.json`
+- **Title** must contain `#Shorts` and a hook like "O detalhe que NINGUÉM viu em {anime}"
+- **5-beat structure:**
+  - Scene 1 (~3s): CLAIM — "No episódio X de {anime} tem um detalhe que quase ninguém percebeu"
+  - Scene 2 (~8s): CONFLICT — describe the scene / moment where the detail appears
+  - Scene 3 (~15s): REVEAL — what the detail is, where exactly it appears, what it means
+  - Scene 4 (~10s): IMPACT — how it connects to future events / what the author intended
+  - Scene 5 (~5s): CTA — "Você tinha percebido? Comenta se pegou esse detalhe!"
+- `amv` field must point to an AMV that shows the relevant scene
 
-### History Step 3: Generate Script (YOU do this directly)
-Read the trend data and generate `script.json` for the chosen topic.
-
-**Structure for a 40-min documentary (~2400s):**
-- Scene 1: `scene_type="intro"`, ~30s — dramatic hook, most gripping moment of the story
-- Scenes 2–4: Context (~90s total) — set the stage, time period, geography, key figures
-- Main body (~35 min): 30–40 `scene_type="normal"` scenes, 60–90s each — chronological or thematic narrative
-- Final 2 scenes: Legacy/conclusion (~60s) + CTA outro (~25s)
-
-**Script rules for history:**
-- Narration: documentary style (present tense for drama, vivid sensory details)
-- `visual_prompt`: describe a single historically accurate scene for AI image generation (always end with "oil painting style, dramatic chiaroscuro lighting, dark atmospheric")
-- Do NOT use `search_tags`, `amv`, `clip_index`, or `rank_transition`
-- `content_type` must be `"history"`
-- Scene types: `"intro"` (first scene only), `"normal"` (all others)
-
-Write to `{output_dir}/script/script.json`.
-
-### History Step 4: CHECKPOINT — Approve Script
-- Present: title, number of scenes, total duration (~40 min), narration preview (first 3 scenes)
-- User can request tone/topic adjustments
-- Wait for approval before generating images
-
-### History Step 5: Generate Scene Images
-```bash
-python scripts/generate_scene_images.py \
-  --script-path "{output_dir}/script/script.json" \
-  --output-dir "{output_dir}" \
-  --quality medium
-```
-- Generates one image per scene using gpt-image-1 via Responses API
-- Output: `{output_dir}/frames/scene_01.jpg`, `scene_02.jpg`, etc.
-- Estimated cost: ~$1.50–2.00 for 40 scenes (medium quality)
-- Can run in parallel with History Step 5b
-
-### History Step 5b: Generate Thumbnail
-```bash
-python scripts/generate_thumbnail.py \
-  --script-path "{output_dir}/script/script.json" \
-  --output-dir "{output_dir}"
-```
-History thumbnails automatically use documentary style (dark atmospheric, oil painting, dramatic lighting).
-
-### History Step 6: Generate Voice Narration
-```bash
-python scripts/generate_voice.py \
-  --script-path "{output_dir}/script/script.json" \
-  --output-dir "{output_dir}"
-```
-Uses `VOICE_ID_HISTORY` from `.env`. A deep, authoritative male voice works best (e.g., ElevenLabs "George" or "Brian").
-
-### History Step 7: Fetch BGM
-```bash
-python scripts/fetch_bgm.py --query "epic orchestral cinematic documentary" --output-dir "{output_dir}"
-```
-**BGM query guidelines for history:**
-- Ancient civilizations → `"ancient orchestral atmospheric"`
-- Wars/battles → `"epic orchestral cinematic"`
-- Dark history/crimes → `"dark orchestral suspenseful"`
-- General history → `"epic cinematic orchestral documentary"`
-
-### History Step 8: Compose Final Video
-```bash
-python scripts/compose_video.py \
-  --script-path "{output_dir}/script/script.json" \
-  --frames-dir "{output_dir}/frames" \
-  --audio-dir "{output_dir}/audio" \
-  --output-dir "{output_dir}" \
-  --bgm-path "{output_dir}/audio/bgm.mp3" \
-  --bgm-volume 0.12 \
-  --endcard-duration 10
-```
-- Endcard auto-detected from `channels/echoes-of-history/assets/endcard.png`
-- Static images use Ken Burns zoom/pan effect automatically
-- BGM volume 0.12 (slightly lower than anime — narration is primary)
-
-### History Step 9: CHECKPOINT — Approve Video
-- Report final video path, duration, file size
-- Wait for user approval before publishing
-
-### History Step 10: Publish to YouTube
-If the user specifies a date/time, always use `--publish-at` (schedules automatically — no `--privacy` needed):
-```bash
-python scripts/publish_youtube.py \
-  --script-path "{output_dir}/script/script.json" \
-  --video-path "{output_dir}/final/final_video.mp4" \
-  --thumbnail-path "{output_dir}/thumbnail/thumbnail.jpg" \
-  --publish-at "YYYY-MM-DD HH:MM" \
-  --channel-id "{HISTORY_CHANNEL_ID}"
-```
-Otherwise publish as private for manual review:
-```bash
-python scripts/publish_youtube.py \
-  --script-path "{output_dir}/script/script.json" \
-  --video-path "{output_dir}/final/final_video.mp4" \
-  --thumbnail-path "{output_dir}/thumbnail/thumbnail.jpg" \
-  --privacy "private" \
-  --channel-id "{HISTORY_CHANNEL_ID}"
-```
-
-### History Step 11: Post-Publish Steps
-Same as AMV Step 14:
-1. Update description with chapters (use cumulative scene durations to calculate timestamps)
-2. Update tags
-3. Make video public
-4. Post engagement comment (ask viewers which historical era they want next)
-5. Generate community post
+### Hidden Detail Pipeline
+Same steps as Curiosidade (Steps 2–6 above), with these filename substitutions:
+- Script: `script_detail_{anime_slug}.json`
+- Output dir: `{output_dir}/short_detail_{anime_slug}/`
+- Final video: `{output_dir}/short_detail_{anime_slug}/final/final_short.mp4`
 
 ---
 
 ## Rules
+- **Output folder naming**: always use `YYYYMMDD-{slug}` format (e.g. `20260603-top5-db-villains`). Date prefix first so folders sort chronologically. Never put the date at the end.
 - Scene durations must sum to target_duration_seconds (±5s for short videos; ±5% for long videos)
-- Minimum 5 scenes, maximum 60 scenes (history/documentary may use up to 60)
+- Minimum 5 scenes, maximum 60 scenes
 - First scene must hook the viewer
 - Always show the user the script before proceeding
 - Report progress after each step completes
@@ -646,6 +673,9 @@ Same as AMV Step 14:
 - **ALWAYS sync rank card with audio** — rank_transition scenes must have narration_text so the card reveal syncs with the spoken announcement
 - **BGM: Freesound CC0 first** — use `--query` flag with `fetch_bgm.py` (CC0 license, zero Content ID claims). Fall back to `--search` (YouTube) only if Freesound returns nothing.
 - **Zoom-crop is opt-in** — never pass `--zoom-crop` to `compose_video.py` by default. Only add it when the user explicitly requests it at AMV URL submission time.
+- **Shorts hook rule** — Scene 1 of any Short must deliver the main claim by second 2. No setup, no question, no intro. Bold statement only.
+- **TikTok after every Short** — after publishing a Short to YouTube, always offer to publish to TikTok. Skip if `TIKTOK_CLIENT_KEY` is missing from `.env`.
+- **TikTok privacy default** — always use `--privacy SELF_ONLY` for TikTok (user reviews and publishes manually in TikTok Studio).
 
 ## Environment
 - Ensure `.env` is configured with API keys before running agent scripts
