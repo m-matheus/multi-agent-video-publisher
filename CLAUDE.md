@@ -454,26 +454,65 @@ Last scene: scene_type="normal", ~20s, outro narration — wrap up + CTA (CTA ov
 
 ---
 
-## Companion Short (Curiosidade) — Default After Every Video
+## Companion Shorts — Default After Every Video
 
-After the main video is approved and published, **always** offer to generate a companion Curiosidade Short — a 40–55s vertical Short about one surprising fact related to one of the anime featured in the main video. This is the standard companion content, not a mini-summary.
+After the main video is approved and published, **always** offer to generate a companion Short. There are three Short formats available:
+
+| Format | Slug | What it is | Best for |
+|--------|------|-----------|----------|
+| **Curiosidade** | `curiosity` | Surprising fact about an anime/character | Lore-heavy anime |
+| **Iconic Moment Recap** | `recap` | One iconic scene narrated with context | Emotionally strong moments |
+| **Hidden Detail** | `detail` | Overlooked detail / foreshadowing reveal | Any anime |
+
+Ask the user: *"Quer fazer um Short complementar? Posso fazer uma Curiosidade, um Iconic Moment Recap ou um Hidden Detail. Qual prefere — e sobre qual anime?"*
+
+After the user picks format and anime, also ask:
+> "Posso usar os frames do `amv{N}/frames/` já extraído, ou quer usar um AMV novo para o Short?"
+
+---
+
+### Short Script Quality Rules (applies to ALL formats)
+
+These rules override the generic script guidelines for any Short (vertical, `--shorts`):
+
+**Hook rule — 0–2 second claim:**
+- Scene 1 must land the main claim by second 2. No setup, no context, no "today we'll talk about".
+- Use bold, specific, and falsifiable statements: *"Este personagem foi planejado para morrer no episódio 1."*
+- Never open with a question — open with a statement that forces the viewer to think "wait, really?"
+
+**5-beat structure (all Short formats):**
+```
+Beat 1 — CLAIM     (~3s):  One bold, surprising statement. The hook.
+Beat 2 — CONFLICT  (~8s):  The context that makes the claim surprising or meaningful.
+Beat 3 — REVEAL    (~15s): The actual information — the fact, the moment, the detail.
+Beat 4 — IMPACT    (~10s): Why this matters. What it changes. What the fan community doesn't realize.
+Beat 5 — CTA       (~5s):  Direct question to the viewer ("Você sabia disso? Comenta aí!")
+```
+Total: 40–55s. No narration during scene 1 transitions if the visual does the work.
+
+**Pacing:**
+- Narration must be fast-paced and energetic — no long pauses between sentences
+- Each beat should feel like it's escalating
+- CTA must be a genuine question that invites debate (not "like and subscribe")
+
+---
 
 ### AMV Decision Checkpoint
 
-Before starting, ask the user:
-> "Which anime from the main video should the curiosidade Short feature? I can use the existing frames from `amv{N}/frames/`. Would you prefer to use a new AMV for this Short?"
+Before starting any Short, ask the user:
+> "Posso usar os frames existentes de `amv{N}/frames/`, ou quer baixar um AMV novo para este Short?"
 
 - **Use existing frames** → proceed directly with frames already in `{output_dir}/amvN/frames/`
 - **New AMV** (user provides URL) → download and analyze first:
   ```bash
-  python scripts/fetch_amv.py --url "{new_amv_url}" --output-dir "{output_dir}/amv_curiosity"
-  python scripts/analyze_amv.py --amv-path "{output_dir}/amv_curiosity/amv/amv_source.mp4" --output-dir "{output_dir}/amv_curiosity"
+  python scripts/fetch_amv.py --url "{new_amv_url}" --output-dir "{output_dir}/amv_short"
+  python scripts/analyze_amv.py --amv-path "{output_dir}/amv_short/amv/amv_source.mp4" --output-dir "{output_dir}/amv_short"
   ```
-  Then use `--frames-dir "{output_dir}/amv_curiosity/frames"` and `--amv-base-dir "{output_dir}/amv_curiosity"` in the compose step.
+  Then use `--frames-dir "{output_dir}/amv_short/frames"` and `--amv-base-dir "{output_dir}/amv_short"` in the compose step.
 
-### Curiosidade Pre-Step: Check Existing Channel Videos
+### Short Pre-Step: Check Existing Channel Videos
 
-Before writing any Curiosidade script, fetch the channel's recent uploads and check for topic overlap:
+Before writing any Short script, fetch the channel's recent uploads and check for topic overlap:
 
 ```python
 youtube.search().list(
@@ -497,10 +536,12 @@ Before generating captions, choose `--color` based on the anime's mood:
 
 ### Curiosidade Step 1: Generate script_curiosity_{anime}.json (YOU do this)
 - Write to `{output_dir}/script/script_curiosity_{anime_slug}.json`
-- **Structure:** 4–5 scenes, 40–55s total
-- **Scene 1** (~5s): hook — one surprising statement about the anime/character
-- **Scenes 2–4** (~10s each): explain the curiosidade with details
-- **Scene 5** (~5s): outro CTA — ask viewers to comment + follow
+- **Structure:** 5 beats, 40–55s total (follow the **5-beat structure** above)
+- **Scene 1** (~3s): CLAIM — bold statement, the hook
+- **Scene 2** (~8s): CONFLICT — context that makes the claim surprising
+- **Scenes 3** (~15s): REVEAL — the actual fact/detail
+- **Scene 4** (~10s): IMPACT — why it matters / what fans miss
+- **Scene 5** (~5s): CTA — direct question to viewers
 - **Same `amv` field** as the main video (pointing to the correct AMV)
 - **Title** must contain `#Shorts`
 - **No `search_tags`** — frames already extracted
@@ -543,7 +584,7 @@ python scripts/compose_video.py \
 
 > **`--zoom-crop` is opt-in only** — add it only if explicitly requested for this Short.
 
-### Curiosidade Step 5: Publish
+### Curiosidade Step 5: Publish to YouTube
 ```bash
 python scripts/publish_youtube.py \
   --script-path "{output_dir}/script/script_curiosity_{anime}.json" \
@@ -553,7 +594,68 @@ python scripts/publish_youtube.py \
   --channel-id "UCyRJuLu9xr7mrRh-j52RQ9Q"
 ```
 
+### Curiosidade Step 6: Publish to TikTok
+After YouTube upload succeeds, publish the same video to TikTok (requires credentials):
+```bash
+python scripts/publish_tiktok.py \
+  --script-path "{output_dir}/script/script_curiosity_{anime}.json" \
+  --video-path "{output_dir}/short_curiosity_{anime}/final/final_short.mp4" \
+  --privacy SELF_ONLY
+```
+- Default privacy is `SELF_ONLY` (private) for manual review — user changes to public in TikTok Studio
+- First-time setup: run `python scripts/publish_tiktok.py --check-auth` to complete OAuth
+- TikTok credentials saved at `.tiktok_credentials.json` (gitignored)
+- If `TIKTOK_CLIENT_KEY` is missing from `.env`, skip this step and remind the user to configure it
+
 ---
+
+## Iconic Moment Recap Short
+
+A Short (40–55s) narrating a single iconic scene: the context, the moment itself, and its lasting impact.
+
+**When to use:** User asks for a recap of a specific scene, fight, or arc moment.
+
+### Recap Script: script_recap_{anime}.json (YOU do this)
+- Write to `{output_dir}/script/script_recap_{anime_slug}.json`
+- **Title** must contain `#Shorts`
+- **5-beat structure** (same as Curiosidade):
+  - Scene 1 (~3s): CLAIM — "Este momento mudou o anime para sempre" / tease what happens
+  - Scene 2 (~8s): CONFLICT — who are the characters, what led to this moment
+  - Scene 3 (~15s): REVEAL — narrate the moment itself in full sensory detail
+  - Scene 4 (~10s): IMPACT — what changed after this / why fans remember it
+  - Scene 5 (~5s): CTA — "Qual cena te marcou mais nesse anime? Comenta!"
+- `amv` field must point to the correct AMV with clips of that moment
+
+### Recap Pipeline
+Same steps as Curiosidade (Steps 2–6 above), with these filename substitutions:
+- Script: `script_recap_{anime_slug}.json`
+- Output dir: `{output_dir}/short_recap_{anime_slug}/`
+- Final video: `{output_dir}/short_recap_{anime_slug}/final/final_short.mp4`
+
+---
+
+## Hidden Detail Short
+
+A Short (40–55s) revealing a detail, foreshadowing, or easter egg most viewers missed.
+
+**When to use:** User asks for a "detalhe que ninguém viu" or foreshadowing Short.
+
+### Hidden Detail Script: script_detail_{anime}.json (YOU do this)
+- Write to `{output_dir}/script/script_detail_{anime_slug}.json`
+- **Title** must contain `#Shorts` and a hook like "O detalhe que NINGUÉM viu em {anime}"
+- **5-beat structure:**
+  - Scene 1 (~3s): CLAIM — "No episódio X de {anime} tem um detalhe que quase ninguém percebeu"
+  - Scene 2 (~8s): CONFLICT — describe the scene / moment where the detail appears
+  - Scene 3 (~15s): REVEAL — what the detail is, where exactly it appears, what it means
+  - Scene 4 (~10s): IMPACT — how it connects to future events / what the author intended
+  - Scene 5 (~5s): CTA — "Você tinha percebido? Comenta se pegou esse detalhe!"
+- `amv` field must point to an AMV that shows the relevant scene
+
+### Hidden Detail Pipeline
+Same steps as Curiosidade (Steps 2–6 above), with these filename substitutions:
+- Script: `script_detail_{anime_slug}.json`
+- Output dir: `{output_dir}/short_detail_{anime_slug}/`
+- Final video: `{output_dir}/short_detail_{anime_slug}/final/final_short.mp4`
 
 ---
 
@@ -571,6 +673,9 @@ python scripts/publish_youtube.py \
 - **ALWAYS sync rank card with audio** — rank_transition scenes must have narration_text so the card reveal syncs with the spoken announcement
 - **BGM: Freesound CC0 first** — use `--query` flag with `fetch_bgm.py` (CC0 license, zero Content ID claims). Fall back to `--search` (YouTube) only if Freesound returns nothing.
 - **Zoom-crop is opt-in** — never pass `--zoom-crop` to `compose_video.py` by default. Only add it when the user explicitly requests it at AMV URL submission time.
+- **Shorts hook rule** — Scene 1 of any Short must deliver the main claim by second 2. No setup, no question, no intro. Bold statement only.
+- **TikTok after every Short** — after publishing a Short to YouTube, always offer to publish to TikTok. Skip if `TIKTOK_CLIENT_KEY` is missing from `.env`.
+- **TikTok privacy default** — always use `--privacy SELF_ONLY` for TikTok (user reviews and publishes manually in TikTok Studio).
 
 ## Environment
 - Ensure `.env` is configured with API keys before running agent scripts

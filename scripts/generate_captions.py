@@ -10,6 +10,11 @@ Usage:
         --output-dir output/run-001/short \
         --shorts \
         --color yellow
+
+Speed variation (--speed-variation):
+    Short words (<4 chars) get a tighter display window so the animation feels snappier.
+    Long words (≥7 chars) get a slight hold so viewers can read them fully.
+    Enabled by default. Pass --no-speed-variation to disable.
 """
 import argparse
 import json
@@ -80,6 +85,39 @@ def chunk_words(words: list[dict], n: int) -> list[list[dict]]:
     return [words[i:i + n] for i in range(0, len(words), n)]
 
 
+def adjust_event_timing(events: list[dict], speed_variation: bool) -> list[dict]:
+    """
+    Compress short/filler words and expand long/keyword words so the pacing
+    feels snappier. Works by shrinking the display window of short words (ending
+    them slightly earlier) and extending long words (ending them slightly later).
+    The next event's start stays anchored to its alignment timestamp — we only
+    adjust the *end* of each block to avoid overlaps.
+
+    Short words  (<4 chars):  end = start + max(duration * 0.70, 0.08s)
+    Normal words (4-6 chars): no change
+    Long words   (≥7 chars):  end = start + min(duration * 1.15, next_start - 0.02s)
+    """
+    if not speed_variation or not events:
+        return events
+
+    adjusted = []
+    for i, ev in enumerate(events):
+        word = ev["text"].strip()
+        duration = ev["end"] - ev["start"]
+        next_start = events[i + 1]["start"] if i + 1 < len(events) else None
+
+        if len(word) < 4:
+            new_end = ev["start"] + max(duration * 0.70, 0.08)
+        elif len(word) >= 7:
+            cap = (next_start - 0.02) if next_start else ev["end"]
+            new_end = min(ev["start"] + duration * 1.15, cap)
+        else:
+            new_end = ev["end"]
+
+        adjusted.append({**ev, "end": round(new_end, 3)})
+    return adjusted
+
+
 def build_ass(events: list[dict], shorts: bool, color: str = "yellow") -> str:
     play_res_y = 1920 if shorts else 1080
     play_res_x = 1080 if shorts else 1920
@@ -135,6 +173,10 @@ def parse_args():
     parser.add_argument("--shorts", action="store_true", help="Use 1080x1920 vertical dimensions")
     parser.add_argument("--color", default="yellow",
                         help="Caption color: yellow, white, cyan, red, orange, or #RRGGBB (default: yellow)")
+    parser.add_argument("--speed-variation", action="store_true", default=True,
+                        help="Vary display duration by word length for snappier pacing (default: on)")
+    parser.add_argument("--no-speed-variation", dest="speed_variation", action="store_false",
+                        help="Disable speed variation — all words get equal display time")
     return parser.parse_args()
 
 
@@ -198,8 +240,9 @@ def main():
 
     ensure_dir(audio_dir)
     ass_path = audio_dir / "captions.ass"
+    events = adjust_event_timing(events, args.speed_variation)
     ass_path.write_text(build_ass(events, args.shorts, args.color), encoding="utf-8")
-    print(f"Captions saved: {ass_path} ({len(events)} blocks, color={args.color})")
+    print(f"Captions saved: {ass_path} ({len(events)} blocks, color={args.color}, speed_variation={args.speed_variation})")
 
 
 if __name__ == "__main__":

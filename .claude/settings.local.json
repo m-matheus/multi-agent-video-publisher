@@ -99,7 +99,11 @@
       "Bash(python scripts/generate_voice.py --script-path output/20260615-top5-aot-strongest/script/script_curiosity_ymir.json --output-dir output/20260615-top5-aot-strongest/short_curiosity_ymir --timestamps)",
       "Bash(python scripts/generate_captions.py --script-path output/20260615-top5-aot-strongest/script/script_curiosity_ymir.json --audio-dir output/20260615-top5-aot-strongest/short_curiosity_ymir/audio --output-dir output/20260615-top5-aot-strongest/short_curiosity_ymir --shorts --color white)",
       "Bash(python scripts/compose_video.py --script-path output/20260615-top5-aot-strongest/script/script_curiosity_ymir.json --frames-dir output/20260615-top5-aot-strongest/amv4/frames --audio-dir output/20260615-top5-aot-strongest/short_curiosity_ymir/audio --output-dir output/20260615-top5-aot-strongest/short_curiosity_ymir --bgm-path output/20260615-top5-aot-strongest/audio/bgm.mp3 --bgm-volume 0.15 --shorts --amv-base-dir output/20260615-top5-aot-strongest --endcard-path channels/hakase-anime/assets/endcard.png --endcard-duration 10 --captions-path output/20260615-top5-aot-strongest/short_curiosity_ymir/audio/captions.ass)",
-      "Bash(python scripts/publish_youtube.py --script-path output/20260615-top5-aot-strongest/script/script_curiosity_ymir.json --video-path output/20260615-top5-aot-strongest/short_curiosity_ymir/final/final_short.mp4 --thumbnail-path output/20260615-top5-aot-strongest/thumbnail/thumbnail.jpg --privacy public --channel-id UCyRJuLu9xr7mrRh-j52RQ9Q)"
+      "Bash(python scripts/publish_youtube.py --script-path output/20260615-top5-aot-strongest/script/script_curiosity_ymir.json --video-path output/20260615-top5-aot-strongest/short_curiosity_ymir/final/final_short.mp4 --thumbnail-path output/20260615-top5-aot-strongest/thumbnail/thumbnail.jpg --privacy public --channel-id UCyRJuLu9xr7mrRh-j52RQ9Q)",
+      "Skill(deep-research)",
+      "Skill(deep-research:*)",
+      "Bash(grep -E '\\\\.py$')",
+      "WebFetch(domain:developers.tiktok.com)"
     ]
   }
 }

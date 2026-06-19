@@ -67,6 +67,10 @@ def load_config() -> dict:
         "anthropic_api_key": os.getenv("ANTHROPIC_API_KEY"),
         "anthropic_model_haiku": os.getenv("ANTHROPIC_MODEL_HAIKU", "claude-haiku-4-5-20251001"),
         "analyze_amv_model": os.getenv("ANALYZE_AMV_MODEL", "claude-haiku-4-5-20251001"),
+        # TikTok (Content Posting API v2)
+        "tiktok_client_key": os.getenv("TIKTOK_CLIENT_KEY"),
+        "tiktok_client_secret": os.getenv("TIKTOK_CLIENT_SECRET"),
+        "tiktok_credentials_path": os.getenv("TIKTOK_CREDENTIALS_PATH", ".tiktok_credentials.json"),
     }
 
 
