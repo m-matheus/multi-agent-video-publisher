@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TikTok Auth — Hakase Anime Publisher</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 80px auto; padding: 0 24px; color: #222; text-align: center; }
+    h1 { font-size: 1.4rem; }
+    .code-box {
+      background: #f4f4f4; border: 2px solid #ccc; border-radius: 8px;
+      padding: 20px; font-size: 1.1rem; font-family: monospace;
+      word-break: break-all; margin: 24px 0; cursor: pointer;
+      user-select: all;
+    }
+    .code-box:hover { border-color: #888; }
+    .hint { color: #666; font-size: 0.9rem; }
+    .error { color: #c00; }
+    button {
+      background: #000; color: #fff; border: none; border-radius: 6px;
+      padding: 10px 24px; font-size: 1rem; cursor: pointer; margin-top: 8px;
+    }
+    button:hover { background: #333; }
+    .copied { color: #090; font-size: 0.9rem; margin-top: 8px; display: none; }
+  </style>
+</head>
+<body>
+  <h1>TikTok Authorization</h1>
+  <div id="content"></div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    const error = params.get('error');
+    const div = document.getElementById('content');
+
+    if (error) {
+      div.innerHTML = `<p class="error">Authorization failed: <strong>${error}</strong></p>
+        <p class="hint">${params.get('error_description') || ''}</p>`;
+    } else if (code) {
+      div.innerHTML = `
+        <p>Authorization successful! Copy the code below and paste it into the terminal:</p>
+        <div class="code-box" id="code-box" onclick="copyCode()">${code}</div>
+        <button onclick="copyCode()">Copy code</button>
+        <p class="copied" id="copied-msg">Copied!</p>
+        <p class="hint">Return to the terminal and paste the code when prompted.</p>`;
+    } else {
+      div.innerHTML = `<p class="error">No authorization code found in the URL.</p>`;
+    }
+
+    function copyCode() {
+      navigator.clipboard.writeText(code).then(() => {
+        document.getElementById('copied-msg').style.display = 'block';
+        setTimeout(() => document.getElementById('copied-msg').style.display = 'none', 2000);
+      });
+    }
+  </script>
+</body>
+</html>

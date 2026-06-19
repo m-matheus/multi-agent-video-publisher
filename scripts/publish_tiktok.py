@@ -15,6 +15,9 @@ Authentication:
          TIKTOK_CLIENT_KEY=your_client_key
          TIKTOK_CLIENT_SECRET=your_client_secret
     3. Run once with --check-auth to complete OAuth flow and save credentials
+
+Redirect URI (register this in TikTok Developer Portal):
+    https://m-matheus.github.io/multi-agent-video-publisher/callback.html
 """
 import argparse
 import hashlib
@@ -23,10 +26,8 @@ import os
 import sys
 import time
 import webbrowser
-from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from threading import Thread
-from urllib.parse import parse_qs, urlencode, urlparse
+from urllib.parse import urlencode
 
 import requests
 
@@ -37,7 +38,7 @@ from scripts.utils.config import load_config, PROJECT_ROOT
 from scripts.utils.state_manager import StateManager
 
 TIKTOK_CREDENTIALS_PATH = PROJECT_ROOT / ".tiktok_credentials.json"
-OAUTH_REDIRECT_URI = "http://localhost:8181/callback"
+OAUTH_REDIRECT_URI = "https://m-matheus.github.io/multi-agent-video-publisher/callback.html"
 OAUTH_SCOPE = "video.publish,user.info.basic"
 
 PRIVACY_LEVELS = {
@@ -50,7 +51,6 @@ PRIVACY_LEVELS = {
 }
 
 # TikTok Content Posting API v2 endpoints
-OAUTH_URL = "https://www.tiktok.com/v2/auth/authorize/"
 TOKEN_URL = "https://open.tiktokapis.com/v2/oauth/token/"
 USER_INFO_URL = "https://open.tiktokapis.com/v2/user/info/"
 VIDEO_INIT_URL = "https://open.tiktokapis.com/v2/post/publish/video/init/"
@@ -75,32 +75,8 @@ def parse_args():
 # OAuth helpers
 # ---------------------------------------------------------------------------
 
-_oauth_code: str | None = None
-
-
-class _CallbackHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        global _oauth_code
-        parsed = urlparse(self.path)
-        params = parse_qs(parsed.query)
-        if "code" in params:
-            _oauth_code = params["code"][0]
-        self.send_response(200)
-        self.send_header("Content-Type", "text/html")
-        self.end_headers()
-        self.wfile.write(
-            b"<h2>TikTok auth complete! You can close this window.</h2>"
-        )
-
-    def log_message(self, format, *args):
-        pass
-
-
 def _run_oauth_flow(config: dict) -> dict:
-    """Open browser for TikTok OAuth and capture the returned code via local server."""
-    global _oauth_code
-    _oauth_code = None
-
+    """Open browser for TikTok OAuth. User copies the code from the callback page."""
     state = hashlib.sha256(os.urandom(32)).hexdigest()[:16]
     params = {
         "client_key": config["tiktok_client_key"],
@@ -109,26 +85,19 @@ def _run_oauth_flow(config: dict) -> dict:
         "redirect_uri": OAUTH_REDIRECT_URI,
         "state": state,
     }
-    auth_url = OAUTH_URL + "?" + urlencode(params)
-
-    server = HTTPServer(("localhost", 8181), _CallbackHandler)
-    t = Thread(target=server.handle_request, daemon=True)
-    t.start()
+    auth_url = "https://www.tiktok.com/v2/auth/authorize/?" + urlencode(params)
 
     print(f"\nOpening browser for TikTok authentication...")
-    print(f"If the browser doesn't open, visit:\n  {auth_url}\n")
+    print(f"If the browser doesn't open, visit this URL manually:\n  {auth_url}\n")
     webbrowser.open(auth_url)
 
-    # Wait up to 120s for the callback
-    for _ in range(240):
-        if _oauth_code:
-            break
-        time.sleep(0.5)
+    print("After authorizing, the browser will show a page with an authorization code.")
+    code = input("Paste the authorization code here and press Enter: ").strip()
 
-    if not _oauth_code:
-        raise RuntimeError("TikTok OAuth timed out — no code received after 120s")
+    if not code:
+        raise RuntimeError("No authorization code provided.")
 
-    return _exchange_code_for_token(config, _oauth_code)
+    return _exchange_code_for_token(config, code)
 
 
 def _exchange_code_for_token(config: dict, code: str) -> dict:
