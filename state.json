@@ -46,36 +46,36 @@
         "step-04-voice-narration": {
           "started_at": "2026-04-29T13:13:32.658429+00:00",
           "status": "completed",
-          "completed_at": "2026-06-15T15:13:24.522035+00:00",
+          "completed_at": "2026-06-22T15:47:26.303252+00:00",
           "outputs": {
-            "narration_path": "output\\20260615-top5-aot-strongest\\short_curiosity_ymir\\audio\\narration_full.mp3",
+            "narration_path": "output\\20260621-peak-dragon-ball\\short_curiosity_dragon-ball\\audio\\narration_full.mp3",
             "segment_durations": [
-              12.51265306122449,
-              19.565714285714286,
-              19.48734693877551,
-              17.94612244897959,
-              12.120816326530612
+              5.067755102040817,
+              15.22938775510204,
+              28.917551020408162,
+              19.33061224489796,
+              5.955918367346939
             ],
-            "total_duration": 82.99102040816327
+            "total_duration": 75.8595918367347
           }
         },
         "step-06-thumbnail-creation": {
           "started_at": "2026-04-29T13:13:34.704113+00:00",
           "status": "completed",
-          "completed_at": "2026-06-15T13:26:39.343504+00:00",
+          "completed_at": "2026-06-22T16:01:12.252449+00:00",
           "outputs": {
-            "thumbnail_path": "output\\20260615-top5-aot-strongest\\thumbnail\\thumbnail.jpg",
-            "request": "Create a viral YouTube thumbnail for an anime video.\n\nVideo Topic:\nTop 5 Strongest Attack on Titan Characters Ever Ranked\n\nMain Character:\nEren Yeager\n\nCharacters Featured:\nReiner Braun, Zeke Yeager, Levi Ackerman, Ymir Fritz, Eren Yeager\n\nAnime / Series:\nAttack On Titan\n\nTheme:\nPower ranking, legendary characters, strongest beings\n\nCreate a viral YouTube thumbnail for a single-franchise ranking video.\n\nComposition:\nThe franchise's main protagonist is the dominant figure — centered or slightly right,\nfilling roughly half the thumbnail in a powerful close shot. Render them in their\nmost iconic form (peak transformation, signature pose, or definitive battle stance).\n\nPlace 1–2 supporting characters from the same anime in the background — smaller,\npartially shadowed, partially behind the protagonist. Hint at the rest of the\nranked cast without crowding the frame. No ranking numbers anywhere.\n\nUse cinematic anime key art quality matching the show's official promotional posters.\nBackground should evoke an iconic location or signature visual effect from the series\n(flag of the crew, the show's signature aura color, a battlefield from a memorable arc, etc).\n\nUse dramatic rim lighting, strong glow effects, volumetric lighting and high contrast.\n\nTEXT RULES — critical:\n- The headline must be the franchise name treated as the show's official logo.\n  Use the show's actual logo aesthetic (color, font, weight, glow) — no generic fonts.\n  Place the logo prominently in the upper-left or upper-center.\n- Below or beside the logo, add 2–3 punchy words that describe the ranking\n  (e.g. \"TOP 5 FIGHTS\", \"STRONGEST BATTLES\", \"GREATEST DUELS\", \"BEST FIGHTS EVER\").\n  This subtitle should be smaller than the logo but still bold and fully visible.\n- DO NOT use generic clickbait phrases like \"YOU MISSED THIS\" or \"NOBODY WATCHES THIS\".\n- All text must be fully visible — never cropped at any edge.\n\nThumbnail should instantly read as \"this is THE ranking video for {SERIES}\".\n\nNo clutter. No UI elements. No subtitles. No ranking numbers on the image."
+            "thumbnail_path": "output\\20260621-peak-dragon-ball\\thumbnail\\cover.jpg",
+            "request": "Create a viral YouTube Shorts / TikTok cover image for an anime video.\n\nVideo Topic:\nVegeta vs Beerus Wasn't Supposed to Happen — Toriyama Changed Everything\n\nTheme:\nAnime power, action, spectacle\n\nCreate a modern viral anime YouTube thumbnail optimized for high CTR.\n\nComposition rules:\nOne dominant character occupies 50% of the thumbnail on the right side.\nThe character should be extremely detailed, sharp, confident, and visually powerful.\n\nPlace secondary characters in the background, partially shadowed and smaller.\nCreate strong depth separation between foreground and background.\n\nUse cinematic anime key art quality, similar to official promotional posters.\n\nBackground should feature epic environmental effects related to the anime\n(energy, cosmos, flames, lightning, dimensional effects, aura, destruction, etc).\n\nUse dramatic rim lighting, strong glow effects, volumetric lighting and high contrast.\n\nTEXT RULES — critical:\n- Include 2–4 short punchy words that tease the video's hook. The text must be original and specific to THIS video's topic — never use generic filler phrases.\n- Write text that a human thumbnail designer would create for this specific video: something surprising, specific, or provocative about the actual content.\n- DO NOT use generic red/yellow block letters. NEVER use thick outline fonts.\n- Style: editorial magazine or film poster typography — clean, confident, high contrast.\n  Think: a word or short phrase set in a strong condensed sans-serif or dramatic serif,\n  integrated into the composition, not slapped on top.\n- Color should complement the image (white, off-white, pale gold, deep black, or drawn from the character palette).\n- Text placement must feel intentional — top-left flush, bottom-right anchor, or overlaid on negative space.\n- The result should look like a human designer made it, not an AI template.\n\nThumbnail should instantly communicate power, ranking, mystery, or superiority.\n\nNo clutter. No UI elements. No subtitles. No ranking numbers.\nOnly one clear focal point.\n\nIMPORTANT: Generate this as a VERTICAL portrait image (9:16 ratio, taller than wide). All composition rules above apply — just reflow the layout for portrait orientation. The character should fill the center-to-bottom of the frame. Text anchors to the top portion. No elements should be cropped."
           }
         },
         "step-05-video-composition": {
           "started_at": "2026-04-29T13:25:53.641223+00:00",
           "status": "completed",
-          "completed_at": "2026-06-15T15:14:37.612428+00:00",
+          "completed_at": "2026-06-22T16:03:46.610018+00:00",
           "outputs": {
-            "video_path": "output\\20260615-top5-aot-strongest\\short_curiosity_ymir\\final\\final_short.mp4",
-            "duration": 81.333008,
-            "size_mb": 15.58
+            "video_path": "output\\20260621-peak-dragon-ball\\short_curiosity_dragon-ball\\final\\final_short.mp4",
+            "duration": 74.375,
+            "size_mb": 48.56
           }
         },
         "step-02-image-generation": {
@@ -120,44 +120,48 @@
         "step-bgm-fetch": {
           "started_at": "2026-04-29T22:42:57.906279+00:00",
           "status": "completed",
-          "completed_at": "2026-06-15T13:28:57.634765+00:00",
+          "completed_at": "2026-06-22T00:42:23.241442+00:00",
           "outputs": {
-            "bgm_path": "output\\20260615-top5-aot-strongest\\audio\\bgm.mp3"
+            "bgm_path": "output\\20260621-peak-dragon-ball\\audio\\bgm.mp3"
           }
         },
         "fetch-amv": {
           "started_at": "2026-04-30T00:25:21.441929+00:00",
           "status": "completed",
           "outputs": {
-            "amv_path": "output\\20260615-top5-aot-strongest\\amv2\\amv\\amv_source.mp4",
-            "title": "(AOT) Zeke Jaeger | Beast",
-            "duration_seconds": 260
+            "amv_path": "output\\20260621-peak-dragon-ball\\amv3\\amv\\amv_source.mp4",
+            "title": "Goku Defeats Majin Buu with the Genkidama - [Japanese Remastered]",
+            "duration_seconds": 205
           },
-          "completed_at": "2026-06-15T12:57:59.576913+00:00"
+          "completed_at": "2026-06-22T00:16:02.325000+00:00"
         },
         "analyze-amv": {
           "started_at": "2026-04-30T00:39:38.931132+00:00",
           "status": "completed",
           "outputs": {
-            "analysis_path": "output\\20260615-top5-aot-strongest\\amv3\\amv\\amv_analysis.json",
+            "analysis_path": "output\\20260621-peak-dragon-ball\\amv3\\amv\\amv_analysis.json",
             "scene_count": 12,
-            "total_duration_seconds": 328.42
+            "total_duration_seconds": 205.31
           },
-          "completed_at": "2026-06-15T13:14:43.570962+00:00"
+          "completed_at": "2026-06-22T00:29:05.587983+00:00"
         },
         "step-07-youtube-publishing": {
           "started_at": "2026-04-30T16:13:31.568495+00:00",
           "status": "completed",
-          "completed_at": "2026-06-15T15:16:42.071263+00:00",
+          "completed_at": "2026-06-22T16:09:11.183904+00:00",
           "outputs": {
-            "video_id": "x8lbkj3fDEw",
-            "url": "https://www.youtube.com/watch?v=x8lbkj3fDEw",
-            "studio_url": "https://studio.youtube.com/video/x8lbkj3fDEw/edit",
+            "video_id": "UMe2ktUbnOo",
+            "url": "https://www.youtube.com/watch?v=UMe2ktUbnOo",
+            "studio_url": "https://studio.youtube.com/video/UMe2ktUbnOo/edit",
             "privacy": "public",
             "publish_at": null,
             "channel_id": "UCyRJuLu9xr7mrRh-j52RQ9Q",
-            "title": "Ymir Fritz Was a Slave For 2000 Years — And Chose It #Shorts"
+            "title": "Vegeta vs Beerus Wasn't Supposed to Happen — Toriyama Changed Everything"
           }
+        },
+        "step-tiktok-publishing": {
+          "started_at": "2026-06-19T14:01:14.716757+00:00",
+          "status": "failed"
         }
       }
     }

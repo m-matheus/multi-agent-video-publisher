@@ -103,7 +103,25 @@
       "Skill(deep-research)",
       "Skill(deep-research:*)",
       "Bash(grep -E '\\\\.py$')",
-      "WebFetch(domain:developers.tiktok.com)"
+      "WebFetch(domain:developers.tiktok.com)",
+      "Bash(python scripts/fetch_amv.py --url \"https://www.youtube.com/watch?v=8NysLCDPw3w\" --output-dir \"output/20260618-top5-epic-fights/amv5\")",
+      "Bash(python scripts/fetch_amv.py --url \"https://www.youtube.com/watch?v=4XCKamWlCEo\" --output-dir \"output/20260618-top5-epic-fights/amv4\")",
+      "Bash(python scripts/fetch_amv.py --url \"https://www.youtube.com/watch?v=xL_PwoKfLj4\" --output-dir \"output/20260618-top5-epic-fights/amv3\")",
+      "Bash(python scripts/fetch_amv.py --url \"https://www.youtube.com/watch?v=AShSo8ylBDE\" --output-dir \"output/20260618-top5-epic-fights/amv2\")",
+      "Bash(python scripts/fetch_amv.py --url \"https://www.youtube.com/watch?v=BAQvCB3Fnm0\" --output-dir \"output/20260618-top5-epic-fights/amv1\")",
+      "Bash(python scripts/analyze_amv.py --amv-path \"output/20260618-top5-epic-fights/amv1/amv/amv_source.mp4\" --output-dir \"output/20260618-top5-epic-fights/amv1\")",
+      "Bash(python scripts/analyze_amv.py --amv-path \"output/20260618-top5-epic-fights/amv3/amv/amv_source.mp4\" --output-dir \"output/20260618-top5-epic-fights/amv3\")",
+      "Bash(python scripts/analyze_amv.py --amv-path \"output/20260618-top5-epic-fights/amv5/amv/amv_source.mp4\" --output-dir \"output/20260618-top5-epic-fights/amv5\")",
+      "Bash(python scripts/analyze_amv.py --amv-path \"output/20260618-top5-epic-fights/amv2/amv/amv_source.mp4\" --output-dir \"output/20260618-top5-epic-fights/amv2\")",
+      "Bash(python scripts/fetch_amv.py --url \"https://www.youtube.com/watch?v=zWsuS59bc0s\" --output-dir \"output/20260618-top5-epic-fights/amv4\")",
+      "Bash(python scripts/analyze_amv.py --amv-path \"output/20260618-top5-epic-fights/amv4/amv/amv_source.mp4\" --output-dir \"output/20260618-top5-epic-fights/amv4\")",
+      "Bash(python scripts/generate_voice.py --script-path \"output/20260618-top5-epic-fights/script/script.json\" --output-dir \"output/20260618-top5-epic-fights\")",
+      "Bash(python scripts/generate_thumbnail.py --script-path \"output/20260618-top5-epic-fights/script/script.json\" --output-dir \"output/20260618-top5-epic-fights\")",
+      "Bash(ffprobe -v error -show_entries format=duration -of csv=p=0 output/20260618-top5-epic-fights/audio/narration_full.mp3)",
+      "Bash(ffprobe -v error -show_entries format=duration -of csv=p=0 output/20260618-top5-epic-fights/audio/narration_segments/segment_23.mp3)",
+      "Bash(python scripts/fetch_bgm.py --query \"epic orchestral cinematic\" --output-dir \"output/20260618-top5-epic-fights\")",
+      "Bash(python scripts/compose_video.py --script-path output/20260618-top5-epic-fights/script/script.json --frames-dir output/20260618-top5-epic-fights/amv1/frames --audio-dir output/20260618-top5-epic-fights/audio --output-dir output/20260618-top5-epic-fights --bgm-path output/20260618-top5-epic-fights/audio/bgm.mp3 --bgm-volume 0.15 --amv-base-dir output/20260618-top5-epic-fights --endcard-path channels/hakase-anime/assets/endcard.png --endcard-duration 10)",
+      "Bash(ffprobe -v error -show_entries format=duration -of csv=p=0 output/20260618-top5-epic-fights/final/final_video.mp4)"
     ]
   }
 }

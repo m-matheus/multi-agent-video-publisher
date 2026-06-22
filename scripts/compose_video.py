@@ -446,6 +446,8 @@ def parse_args():
                              "Multiple AMVs: 'amv3:0.08,amv5:0.05'.")
     parser.add_argument("--shorts", action="store_true",
                         help="Output vertical 1080x1920 format for YouTube Shorts")
+    parser.add_argument("--hook-text", default=None,
+                        help="Static hook text burned into the top of Shorts (auto-read from script hook_text field if not set)")
     parser.add_argument("--captions-path", default=None,
                         help="Path to ASS subtitle file to burn into the final video (kinetic captions)")
     parser.add_argument("--amv-base-dir", default=None,
@@ -584,8 +586,8 @@ def create_scene_clip(
         ]
     elif is_gif or ext == ".webm":
         if shorts:
-            # Letterbox: fit full 16:9 frame inside 9:16 with black bars
-            vf = f"scale={out_w}:{out_h}:force_original_aspect_ratio=decrease,pad={out_w}:{out_h}:(ow-iw)/2:(oh-ih)/2:black,fps=24{drawtext}"
+            # Zoom-fill: scale 16:9 to fill 9:16 by cropping sides (no black bars)
+            vf = f"scale={out_w}:{out_h}:force_original_aspect_ratio=increase,crop={out_w}:{out_h},fps=24{drawtext}"
         else:
             if corner_crop > 0:
                 # Crop watermark from bottom-right, then upscale back to 1920x1080
@@ -614,8 +616,8 @@ def create_scene_clip(
             clip_duration = target_duration
 
         if shorts:
-            # Letterbox: fit full 16:9 frame inside 9:16 with black bars
-            vf = f"scale={out_w}:{out_h}:force_original_aspect_ratio=decrease,pad={out_w}:{out_h}:(ow-iw)/2:(oh-ih)/2:black,fps=24{drawtext}"
+            # Zoom-fill: scale 16:9 to fill 9:16 by cropping sides (no black bars)
+            vf = f"scale={out_w}:{out_h}:force_original_aspect_ratio=increase,crop={out_w}:{out_h},fps=24{drawtext}"
         else:
             if corner_crop > 0:
                 kept_w = f"trunc(iw*{1.0 - corner_crop}/2)*2"
@@ -638,11 +640,13 @@ def create_scene_clip(
                 str(output_path),
             ]
         else:
+            # Freeze last frame to fill target duration — never loop
+            vf_freeze = vf.replace(",fps=24", f",tpad=stop_mode=clone:stop_duration={target_duration:.3f},fps=24", 1)
             cmd = [
                 _ffmpeg(), "-y",
-                "-stream_loop", "-1", "-i", str(input_path),
+                "-i", str(input_path),
                 "-t", str(target_duration),
-                "-vf", vf,
+                "-vf", vf_freeze,
                 "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "fast",
                 "-an",
                 str(output_path),
@@ -753,6 +757,8 @@ def build_final_video(
     bgm_path: Path = None,
     bgm_volume: float = 0.15,
     captions_path: Path = None,
+    hook_text: str = None,
+    shorts: bool = False,
 ) -> list[str]:
     """Build FFmpeg command to concatenate scene clips with audio."""
     cmd = [_ffmpeg(), "-y"]
@@ -783,7 +789,43 @@ def build_final_video(
         filter_parts.append(f"{concat_inputs}concat=n={n_clips}:v=1:a=0[vconcat]")
 
     # Burn kinetic captions if provided
-    if captions_path:
+    if hook_text and shorts:
+        font_path = find_system_font()
+        if font_path:
+            esc_font = font_path.replace(":", "\\:")
+            safe_hook = hook_text.replace("'", "").replace(":", " ").replace("\\", "")
+            # Word-wrap: split into lines of ~25 chars for 9:16 layout
+            words = safe_hook.split()
+            lines, cur = [], []
+            for w in words:
+                if sum(len(x) + 1 for x in cur) + len(w) > 25 and cur:
+                    lines.append(" ".join(cur))
+                    cur = [w]
+                else:
+                    cur.append(w)
+            if cur:
+                lines.append(" ".join(cur))
+            hook_filters = []
+            line_h = 95
+            top_pad = 60
+            for li, line in enumerate(lines):
+                y = top_pad + li * line_h
+                hook_filters.append(
+                    f"drawtext=fontfile='{esc_font}':text='{line}'"
+                    f":fontcolor=white:fontsize=78"
+                    f":x=(w-text_w)/2:y={y}"
+                    f":box=1:boxcolor=0x000000BB:boxborderw=18"
+                    f":shadowx=3:shadowy=3:shadowcolor=black@0.9"
+                )
+            filter_parts.append(f"[vconcat]{','.join(hook_filters)}[vhook]")
+            if captions_path:
+                ass_path = Path(captions_path).resolve().as_posix()
+                import re
+                ass_path = re.sub(r"^([A-Za-z]):/", r"\1\\:/", ass_path)
+                filter_parts.append(f"[vhook]ass='{ass_path}'[vout]")
+            else:
+                filter_parts.append("[vhook]copy[vout]")
+    elif captions_path:
         ass_path = Path(captions_path).resolve().as_posix()
         # FFmpeg ass filter requires colon after drive letter to be escaped on Windows
         import re
@@ -1003,8 +1045,9 @@ def main():
             bg_clip = None
             clips = amv_files[amv_num]
             idx = amv_idx[amv_num]
+            # Advance the pointer — each scene in the same AMV gets the next clip
             source = clips[idx % len(clips)]
-            amv_idx[amv_num] = (idx + 1) % len(clips)
+            amv_idx[amv_num] = idx + 1  # no wrap: keep marching forward through pool
         elif source_files:
             bg_clip = None
             source = source_files[min(file_idx, len(source_files) - 1)]
@@ -1012,6 +1055,40 @@ def main():
         else:
             bg_clip = None
             source = None
+
+        # For non-pinned AMV scenes, if a single clip is shorter than the target
+        # duration, extend source by pre-concatenating the next clips from the pool
+        # instead of looping. This is independent of the routing block above.
+        if (
+            source is not None
+            and amv_num
+            and amv_num in amv_files
+            and scene_type not in ("rank_transition", "shorts_cta")
+            and "clip_index" not in scene
+        ):
+            try:
+                src_dur = get_video_duration(source)
+            except Exception:
+                src_dur = target_duration
+            if src_dur < target_duration:
+                clips = amv_files[amv_num]
+                collected = [source]
+                total_dur = src_dur
+                ptr = amv_idx[amv_num]  # already advanced past `source`
+                while total_dur < target_duration:
+                    next_clip = clips[ptr % len(clips)]
+                    try:
+                        next_dur = get_video_duration(next_clip)
+                    except Exception:
+                        next_dur = target_duration
+                    collected.append(next_clip)
+                    total_dur += next_dur
+                    ptr += 1
+                if len(collected) > 1:
+                    # Advance pool pointer past all clips we consumed
+                    amv_idx[amv_num] = ptr
+                    concat_path = temp_dir / f"concat_amv{amv_num}_{i+1:02d}.mp4"
+                    source = concat_clips_for_scene(collected, concat_path, _ffmpeg())
 
         clip_path = temp_dir / f"processed_{i+1:02d}.mp4"
         overlay = get_scene_overlay(scene, i, total_scenes, title, shorts=args.shorts) if font_available else None
@@ -1092,10 +1169,14 @@ def main():
     srt_path = Path(args.srt_path) if args.srt_path else None
 
     print(f"  Composing final video...")
-    # If SRT will be embedded, encode to a temp file first, then add subtitles on top
+    # Resolve hook text: CLI arg > script field
+    hook_text = getattr(args, "hook_text", None)
+    if not hook_text and args.shorts:
+        hook_text = script.get("hook_text")
+    # If per-scene segments exist, encode to a temp file first, then add subtitles on top
     encode_output = final_dir / "final_nosub_tmp.mp4" if (srt_path and srt_path.exists()) else output_path
     captions_path = Path(args.captions_path) if getattr(args, "captions_path", None) else None
-    cmd = build_final_video(scene_clips, audio_path, encode_output, transitions, bgm_path, args.bgm_volume, captions_path)
+    cmd = build_final_video(scene_clips, audio_path, encode_output, transitions, bgm_path, args.bgm_volume, captions_path, hook_text, args.shorts)
 
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)

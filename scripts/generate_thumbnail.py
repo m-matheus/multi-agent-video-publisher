@@ -28,6 +28,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Generate YouTube thumbnail via Responses API")
     parser.add_argument("--script-path", required=True)
     parser.add_argument("--output-dir", required=True)
+    parser.add_argument("--shorts", action="store_true",
+                        help="Generate a vertical 9:16 cover for Shorts/TikTok (1080x1920) instead of a landscape thumbnail")
     return parser.parse_args()
 
 
@@ -55,8 +57,8 @@ Background should feature epic environmental effects related to the anime
 Use dramatic rim lighting, strong glow effects, volumetric lighting and high contrast.
 
 TEXT RULES — critical:
-- Include 2–4 short punchy words that tease the video's hook. Text should demand attention.
-- Examples of good text: "NOBODY WATCHES THIS", "ACTUALLY PERFECT", "BURIED BY THE ALGORITHM", "YOU MISSED THIS".
+- Include 2–4 short punchy words that tease the video's hook. The text must be original and specific to THIS video's topic — never use generic filler phrases.
+- Write text that a human thumbnail designer would create for this specific video: something surprising, specific, or provocative about the actual content.
 - DO NOT use generic red/yellow block letters. NEVER use thick outline fonts.
 - Style: editorial magazine or film poster typography — clean, confident, high contrast.
   Think: a word or short phrase set in a strong condensed sans-serif or dramatic serif,
@@ -139,6 +141,7 @@ ANIME_LOGO_STYLE: dict[str, str] = {
     "frieren": "Use the Frieren logo aesthetic: soft aged-parchment lettering with muted greens and golds, timeless and melancholic.",
     "blue lock": "Use the Blue Lock logo aesthetic: bold electric blue and white geometric lettering, high-intensity sports energy.",
     "kaiju no. 8": "Use the Kaiju No. 8 logo aesthetic: military stencil lettering with monster-scale grit, dark grey-green palette.",
+    "kaiju no 8": "Use the Kaiju No. 8 logo aesthetic: military stencil lettering with monster-scale grit, dark grey-green palette.",
     "dandadan": "Use the Dandadan logo aesthetic: explosive pop-art coloring, chaotic retro manga lettering, vivid orange and purple.",
     "mob psycho": "Use the Mob Psycho 100 logo aesthetic: bold hand-drawn text with psychic energy crackling effect, white on dark.",
     "oshi no ko": "Use the Oshi no Ko logo aesthetic: pastel idol-pop lettering with star motifs, pink and gold shimmer.",
@@ -194,6 +197,7 @@ SERIES_PROTAGONIST: dict[str, str] = {
     "frieren": "Frieren",
     "blue lock": "Isagi Yoichi",
     "kaiju no. 8": "Kafka Hibino",
+    "kaiju no 8": "Kafka Hibino",
     "dandadan": "Momo Ayase",
     "mob psycho": "Shigeo Kageyama",
     "oshi no ko": "Aqua Hoshino",
@@ -274,7 +278,7 @@ def _resolve_anime_logo_style(script: dict, ranked_names: list) -> str:
     )
 
 
-def build_chatgpt_request(script: dict) -> str:
+def build_chatgpt_request(script: dict, shorts: bool = False) -> str:
     context = build_context_block(script)
     scenes = script.get("scenes", [])
     ranked_names = [
@@ -282,6 +286,25 @@ def build_chatgpt_request(script: dict) -> str:
         if s.get("scene_type") == "rank_transition" and s.get("name")
     ]
     logo_hint = _resolve_anime_logo_style(script, ranked_names)
+
+    if shorts:
+        # Vertical 9:16 cover — always use PREMIUM_BASELINE (dominant character,
+        # hype composition) adapted for portrait orientation.
+        logo_hint = _resolve_anime_logo_style(script, ranked_names)
+        vertical_note = (
+            "IMPORTANT: Generate this as a VERTICAL portrait image (9:16 ratio, taller than wide). "
+            "All composition rules above apply — just reflow the layout for portrait orientation. "
+            "The character should fill the center-to-bottom of the frame. "
+            "Text anchors to the top portion. No elements should be cropped."
+        )
+        return "\n\n".join(filter(None, [
+            "Create a viral YouTube Shorts / TikTok cover image for an anime video.",
+            context,
+            PREMIUM_BASELINE,
+            logo_hint,
+            vertical_note,
+            script.get("thumbnail_style", "") or "",
+        ])).strip()
 
     # Single-anime ranking → use the franchise-logo baseline (official-looking
     # title treatment + protagonist), not the generic clickbait baseline.
@@ -303,7 +326,7 @@ def build_chatgpt_request(script: dict) -> str:
 # Generate via Responses API (ChatGPT's internal pipeline)
 # ---------------------------------------------------------------------------
 
-def generate_via_responses_api(request: str, out_path: Path, config: dict) -> Path | None:
+def generate_via_responses_api(request: str, out_path: Path, config: dict, shorts: bool = False) -> Path | None:
     api_key = config.get("openai_api_key")
     if not api_key:
         print("  ERROR: OPENAI_API_KEY not set in .env")
@@ -314,13 +337,16 @@ def generate_via_responses_api(request: str, out_path: Path, config: dict) -> Pa
 
         print(f"  Request ({len(request)} chars): {request[:120]}...")
 
+        # 1024x1536 = portrait 9:16 for Shorts/TikTok; 1536x1024 = landscape for YouTube
+        size = "1024x1536" if shorts else "1536x1024"
+
         response = client.responses.create(
             model="gpt-4o",
             input=request,
             tools=[{
                 "type": "image_generation",
                 "quality": "high",
-                "size": "1536x1024",
+                "size": size,
             }],
         )
 
@@ -355,18 +381,26 @@ def main():
     state = StateManager()
     state.update_step("step-06-thumbnail-creation", "running")
 
-    request = build_chatgpt_request(script)
-    print("Generating thumbnail via Responses API (ChatGPT pipeline)...")
+    request = build_chatgpt_request(script, shorts=args.shorts)
+    mode = "Shorts cover (9:16)" if args.shorts else "YouTube thumbnail (16:9)"
+    print(f"Generating {mode} via Responses API (ChatGPT pipeline)...")
 
     raw_path = thumb_dir / "dalle_raw.png"
-    image_path = generate_via_responses_api(request, raw_path, config)
+    image_path = generate_via_responses_api(request, raw_path, config, shorts=args.shorts)
     if not image_path:
         state.update_step("step-06-thumbnail-creation", "failed")
         sys.exit(1)
 
     from PIL import Image
-    thumbnail_path = thumb_dir / "thumbnail.jpg"
-    Image.open(image_path).convert("RGB").resize((1280, 720), Image.LANCZOS).save(
+    if args.shorts:
+        out_filename = "cover.jpg"
+        out_size = (1080, 1920)
+    else:
+        out_filename = "thumbnail.jpg"
+        out_size = (1280, 720)
+
+    thumbnail_path = thumb_dir / out_filename
+    Image.open(image_path).convert("RGB").resize(out_size, Image.LANCZOS).save(
         str(thumbnail_path), "JPEG", quality=93)
 
     size_kb = thumbnail_path.stat().st_size // 1024

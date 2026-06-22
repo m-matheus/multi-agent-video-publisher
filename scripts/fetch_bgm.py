@@ -105,6 +105,13 @@ def search_freesound(query: str, api_key: str) -> list[dict]:
     return resp.json().get("results", [])
 
 
+def pick_random_track(results: list[dict]) -> dict:
+    """Pick a random track from the top 5 results to avoid always reusing the same BGM."""
+    import random
+    pool = results[:5]
+    return random.choice(pool)
+
+
 def download_freesound_preview(sound: dict, output_path: Path) -> None:
     """Download the HQ MP3 preview from a Freesound sound object."""
     import requests
@@ -167,8 +174,8 @@ def main():
             state.update_step("step-bgm-fetch", "failed")
             sys.exit(1)
 
-        track = results[0]
-        print(f"  Found: '{track.get('name')}' ({track.get('duration', '?'):.0f}s)")
+        track = pick_random_track(results)
+        print(f"  Found: '{track.get('name')}' ({track.get('duration', '?'):.0f}s) [picked from top {min(5, len(results))}]")
         try:
             download_freesound_preview(track, bgm_path)
         except Exception as e:

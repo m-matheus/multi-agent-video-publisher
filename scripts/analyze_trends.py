@@ -16,6 +16,7 @@ Usage (default — uses built-in query bank):
 """
 import argparse
 import json
+import random
 import re
 import sys
 
@@ -155,7 +156,7 @@ FRANCHISE_MAP: dict[str, list[str]] = {
         "vinland saga", "thorfinn vinland", "askeladd",
     ],
     "Kaiju No. 8": [
-        "kaiju no 8", "kaiju no8", "kafka hibino",
+        "kaiju no 8", "kaiju no. 8", "kaiju no8", "kafka hibino",
     ],
     "Black Clover": [
         "black clover", "asta black clover", "julius novachrono",
@@ -214,6 +215,15 @@ FRANCHISE_MAP: dict[str, list[str]] = {
 # Format detection patterns
 # ---------------------------------------------------------------------------
 FORMAT_PATTERNS: dict[str, list[str]] = {
+    # Check genre-specific formats FIRST — they're more specific than "ranking"
+    "isekai": [
+        r"\bisekai\b",
+    ],
+    "overpowered": [
+        r"\boverpowered\b", r"\bop\s+mc\b", r"\bop\s+protagonist\b",
+        r"\boverpowered\s+(mc|protagonist|main\s+character)\b",
+        r"weakest\s+to\s+(god|strongest|overpowered)",
+    ],
     "ranking": [
         r"top\s+\d+", r"rank(ed|ing)", r"tier\s+list", r"best\s+\d+",
         r"strongest\s+\d+", r"most\s+powerful",
@@ -232,13 +242,6 @@ FORMAT_PATTERNS: dict[str, list[str]] = {
     "news": [
         r"\bannounced?\b", r"\bnew\s+season\b", r"\brelease\s+date\b",
         r"\btrailer\b", r"\bofficial\b",
-    ],
-    "isekai": [
-        r"\bisekai\b",
-    ],
-    "overpowered": [
-        r"\boverpowered\b", r"\bop\s+mc\b", r"\bop\s+protagonist\b",
-        r"\boverpowered\s+(mc|protagonist|main\s+character)\b",
     ],
     "recommendation": [
         r"\bto\s+watch\b", r"\byou\s+need\s+to\s+watch\b", r"\bbest\s+anime\b",
@@ -481,9 +484,85 @@ def run_trend_analysis(queries: list[str], days: int, config: dict,
 # Suggestions engine
 # ---------------------------------------------------------------------------
 
+# Title templates per format — picked randomly to avoid repetitive "Top 5 X" naming.
+# {n} = number (5–10), {franchise} = franchise name.
+_TITLE_TEMPLATES: dict[str, list[str]] = {
+    "isekai": [
+        "{n} Isekai Anime You Need to Watch Right Now",
+        "Best {n} Isekai Anime That Are Actually Worth Your Time",
+        "{n} Isekai Anime No One Is Talking About",
+        "You're Missing Out on These {n} Isekai Anime",
+        "{n} Completed Isekai Anime — No Waiting for New Seasons",
+    ],
+    "overpowered": [
+        "{n} Anime Where the MC Breaks Everything",
+        "Moments Overpowered Characters Broke the Entire Story",
+        "{n} Anime MCs That Are Genuinely Terrifying",
+        "Most Overpowered Anime MCs — These {n} Are on Another Level",
+        "{n} Times Overpowered MCs Made Everyone Else Irrelevant",
+    ],
+    "recommendation": [
+        "{n} Anime That Will Hook You Instantly",
+        "You're Missing Out on These {n} Anime",
+        "{n} Completed Anime — No Waiting for New Seasons",
+        "These {n} Anime Turned Non-Fans Into Obsessed Watchers",
+        "{n} Underrated Anime That Are Absolute Masterpieces",
+        "Top Action Anime You MUST Watch at Least Once",
+        "{n} Anime No One Talks About (But Everyone Should)",
+    ],
+    "ranking": [
+        "Top {n} Strongest {franchise} Characters — Ranked",
+        "{franchise}'s {n} Most Powerful Characters",
+        "Every {franchise} Character Ranked by Power",
+        "The {n} Strongest Characters in {franchise} — No Debate",
+    ],
+    "analysis": [
+        "{n} {franchise} Powers That Make No Sense (But Are Awesome)",
+        "{franchise}'s Most Broken Abilities — Ranked",
+        "Top {n} Most Overpowered Moments in {franchise}",
+    ],
+    "vs": [
+        "Greatest Fights in {franchise} — Ranked",
+        "{n} {franchise} Battles That Broke the Internet",
+        "Top {n} Most Epic Fights in {franchise}",
+    ],
+    "lore": [
+        "{n} {franchise} Secrets That Change Everything",
+        "Hidden Details in {franchise} That Fans Always Miss",
+        "{n} Things You Missed in {franchise}",
+    ],
+    "other": [
+        "Top {n} Most Iconic {franchise} Moments",
+        "Peak {franchise} — {n} Scenes That Define the Anime",
+        "{franchise}'s {n} Most Unforgettable Scenes",
+        "{n} Reasons {franchise} Is a Peak Anime",
+    ],
+}
+
+
+def _pick_title(fmt: str, franchise: str, n: int = 5) -> str:
+    """Pick a random title template for the given format, filling in placeholders."""
+    templates = _TITLE_TEMPLATES.get(fmt) or _TITLE_TEMPLATES["other"]
+    tmpl = random.choice(templates)
+    return tmpl.format(n=n, franchise=franchise)
+
+
+def _build_channel_format_set(channel_data: dict) -> set[str]:
+    """Return the set of cross-genre format keys already covered on the channel."""
+    covered: set[str] = set()
+    for v in channel_data.get("all_videos", []):
+        fmt = detect_format(v.get("title", ""))
+        if fmt in ("isekai", "overpowered", "recommendation"):
+            covered.add(fmt)
+    return covered
+
+
 def generate_suggestions(videos: list[dict], channel_topics: set[str],
-                         top_n: int = 5) -> list[dict]:
+                         top_n: int = 5,
+                         channel_data: dict | None = None) -> list[dict]:
     """Synthesize topic suggestions from trending videos not yet covered on the channel."""
+    channel_formats: set[str] = _build_channel_format_set(channel_data or {})
+
     suggestions = []
     seen: set[str] = set()
 
@@ -494,27 +573,20 @@ def generate_suggestions(videos: list[dict], channel_topics: set[str],
         franchise = v.get("detected_anime", "Unknown")
         fmt = v.get("detected_format", "other")
 
-        # Cross-genre formats don't need a known franchise — use format as the dedup key
-        dedup_key = fmt if fmt in ("isekai", "overpowered", "recommendation") else franchise
+        # Cross-genre formats use the format name as dedup key
+        is_cross_genre = fmt in ("isekai", "overpowered", "recommendation")
+        dedup_key = fmt if is_cross_genre else franchise
         if dedup_key == "Unknown" or dedup_key in seen:
             continue
         seen.add(dedup_key)
 
-        # Generate a concrete, actionable topic suggestion
-        if fmt == "isekai":
-            topic = f"Top 5 Best Isekai Anime to Watch"
-        elif fmt == "overpowered":
-            topic = f"Top 5 Most Overpowered Anime Protagonists"
-        elif fmt == "recommendation":
-            topic = f"Top 5 Anime You Need to Watch in 2025"
-        elif fmt in ("ranking", "analysis"):
-            topic = f"Top 5 Strongest {franchise} Characters"
-        elif fmt == "vs":
-            topic = f"Greatest Fights in {franchise} Ranked"
-        elif fmt == "lore":
-            topic = f"Top 5 Most Powerful Moments in {franchise}"
+        # Determine if this is already covered on the channel
+        if is_cross_genre:
+            already_on_channel = fmt in channel_formats
         else:
-            topic = f"Top 5 Strongest Characters in {franchise}"
+            already_on_channel = franchise in channel_topics and franchise != "Unknown"
+
+        topic = _pick_title(fmt, franchise)
 
         suggestions.append({
             "franchise": franchise,
@@ -522,7 +594,7 @@ def generate_suggestions(videos: list[dict], channel_topics: set[str],
             "reference_video": v["title"],
             "reference_views_per_day": v["views_per_day"],
             "reference_url": v["url"],
-            "already_on_channel": franchise in channel_topics and franchise != "Unknown",
+            "already_on_channel": already_on_channel,
             "format": fmt,
         })
 
@@ -704,7 +776,7 @@ def main():
     result["videos"] = sorted(merged.values(), key=lambda v: v["views"], reverse=True)
 
     # Generate suggestions before saving
-    suggestions = generate_suggestions(result["videos"], channel_topics)
+    suggestions = generate_suggestions(result["videos"], channel_topics, channel_data=channel_data)
     result["suggestions"] = suggestions
 
     output_path.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")

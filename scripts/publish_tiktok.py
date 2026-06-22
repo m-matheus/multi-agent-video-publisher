@@ -57,7 +57,9 @@ VIDEO_INIT_URL = "https://open.tiktokapis.com/v2/post/publish/video/init/"
 VIDEO_STATUS_URL = "https://open.tiktokapis.com/v2/post/publish/status/fetch/"
 
 # Upload size limits
-CHUNK_SIZE = 10 * 1024 * 1024  # 10 MB chunks
+# TikTok requires chunk_count=1 for files under 64MB (single-chunk upload)
+MAX_SINGLE_CHUNK = 64 * 1024 * 1024  # 64 MB
+CHUNK_SIZE = 10 * 1024 * 1024  # 10 MB (used only when file > 64MB)
 
 
 def parse_args():
@@ -68,6 +70,8 @@ def parse_args():
                         help="Privacy: public / friends / private (default: private/SELF_ONLY)")
     parser.add_argument("--check-auth", action="store_true", help="Check auth status and exit")
     parser.add_argument("--dry-run", action="store_true", help="Print payload without uploading")
+    parser.add_argument("--manual", action="store_true",
+                        help="Print all fields needed for a manual TikTok post (no upload)")
     return parser.parse_args()
 
 
@@ -222,14 +226,21 @@ def _upload_chunk(upload_url: str, video_path: Path, start: int, end: int, total
 def upload_video(access_token: str, video_path: Path, metadata: dict) -> str:
     """Initialize upload, send chunks, return publish_id."""
     file_size = video_path.stat().st_size
-    chunk_count = max(1, (file_size + CHUNK_SIZE - 1) // CHUNK_SIZE)
+
+    # TikTok requires chunk_count=1 for files that fit in a single chunk (<= 64MB)
+    if file_size <= MAX_SINGLE_CHUNK:
+        chunk_size = file_size
+        chunk_count = 1
+    else:
+        chunk_size = CHUNK_SIZE
+        chunk_count = max(1, (file_size + chunk_size - 1) // chunk_size)
 
     payload = {
         "post_info": metadata,
         "source_info": {
             "source": "FILE_UPLOAD",
             "video_size": file_size,
-            "chunk_size": CHUNK_SIZE,
+            "chunk_size": chunk_size,
             "total_chunk_count": chunk_count,
         },
     }
@@ -240,8 +251,8 @@ def upload_video(access_token: str, video_path: Path, metadata: dict) -> str:
     publish_id = init_data["publish_id"]
 
     for i in range(chunk_count):
-        start = i * CHUNK_SIZE
-        end = min(start + CHUNK_SIZE, file_size)
+        start = i * chunk_size
+        end = min(start + chunk_size, file_size)
         print(f"  Uploading chunk {i + 1}/{chunk_count} ({start // 1024 // 1024}–{end // 1024 // 1024} MB)...")
         _upload_chunk(upload_url, video_path, start, end, file_size)
 
@@ -349,6 +360,22 @@ def main():
     if args.dry_run:
         print("\n[DRY RUN] payload:")
         print(json.dumps({"post_info": metadata, "description": description}, indent=2, ensure_ascii=False))
+        return
+
+    if args.manual:
+        title_clean = script["title"].split("#")[0].strip()
+        tags = script.get("tags", [])
+        hashtags = " ".join(f"#{t.replace(' ', '').replace('-', '')}" for t in tags[:30])
+        print("\n" + "=" * 60)
+        print("TIKTOK MANUAL POST — copy these fields into TikTok Studio")
+        print("=" * 60)
+        print(f"\n📁 VIDEO FILE:\n   {video_path.resolve()}\n")
+        print(f"📝 CAPTION (paste as-is):")
+        print(f"   {title_clean}\n\n   {hashtags}\n")
+        print(f"🔒 PRIVACY: Private (review before publishing)")
+        print(f"\n🎵 SOUND: Add a trending sound in TikTok Studio after upload")
+        print(f"\n📋 COVER: Pick a frame that shows the most impactful moment")
+        print("=" * 60)
         return
 
     creds = get_credentials(config)

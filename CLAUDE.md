@@ -5,7 +5,7 @@ You (Claude) are the **orchestrator** of this multi-agent pipeline. You generate
 
 ## How to Run a Video Generation
 
-For **anime content**, the **AMV Workflow** is the default. Ask the user for a YouTube AMV URL.
+For **anime content**, the **AMV Workflow** is the default. The script is generated first (content-first), then AMV URLs are collected based on the script's search queries.
 
 ---
 
@@ -126,85 +126,62 @@ python scripts/analyze_trends.py \
 
 The trends script uses a built-in query bank (no `--queries` needed) and prints a **Top 10 Trending** table (with anime + format detected), franchises already on the channel, and a **Suggested Topics** section automatically. Use the suggestions as the basis for AMV Step 2.
 
-### AMV Step 2: CHECKPOINT — Suggest Themes + Generate Draft Script
+### AMV Step 2: CHECKPOINT — Suggest Themes
 - Propose 3–5 topic options based on trend + channel data
+- For each option, include 2–3 bullet points on what visual moments would best illustrate the ranking (e.g., "Rank 5 – Orochimaru: Orochimaru vs Hiruzen, cursed mark application, snake summoning")
 - **Wait for user to pick a theme**
-- Once theme is chosen, **generate the full draft script immediately** (YOU do this, same rules as AMV Step 7 below, but without AMV analysis — write the narration based on your knowledge of the anime/characters/topic)
-- Show the script summary (title, scene list, narration preview)
-- For each rank, summarize in 1–2 sentences what the narration says and what visual moments would best illustrate it (e.g., "Rank 5 – Orochimaru: narration covers his immortality experiments and Sannin history. Best clips: Orochimaru vs Hiruzen, cursed mark application, snake summoning")
-- **Wait for user to return with AMV URL(s)** — the per-rank visual hints help them pick the right AMV
 
-The draft script may be lightly revised after AMV analysis (AMV Step 6) to align `visual_prompt` fields with what the AMVs actually show, but the narration should stay largely unchanged.
-
-### AMV Step 3: Download AMV(s)
-**Single AMV:**
+### AMV Step 3: Generate Script
+Once the user picks a topic, create the output folder and run `generate_script.py`:
 ```bash
-python scripts/fetch_amv.py --url "{youtube_url}" --output-dir "{output_dir}"
+python scripts/generate_script.py \
+  --output-dir "output/{YYYYMMDD}-{slug}" \
+  --topic "{chosen topic}"
 ```
-Creates: `{output_dir}/amv/amv_source.mp4` and `amv/amv_metadata.json`
+- Generates `script.json` via Claude based on the topic alone (content-first — no AMVs needed yet)
+- Prints a scene breakdown + **AMV search queries** (one per rank transition) to find footage
+- Output: `{output_dir}/script/script.json`
 
-**Multi-AMV (Top N videos):** download each into its own subdirectory:
+### AMV Step 4: CHECKPOINT — Approve Script
+- Present: title, number of scenes, total duration, narration preview
+- Show the printed AMV search queries — one per rank, each with a suggested YouTube search
+- User can request tone/topic changes — rerun `generate_script.py` if needed
+- **Wait for user to approve before downloading AMVs**
+
+### AMV Step 5: Download AMVs (one per rank)
+The script prints one `amv_query` per rank transition. The user searches YouTube using those queries and returns URLs. Download each into its own numbered subdirectory:
 ```bash
 python scripts/fetch_amv.py --url "{amv1_url}" --output-dir "{output_dir}/amv1"
 python scripts/fetch_amv.py --url "{amv2_url}" --output-dir "{output_dir}/amv2"
 # ...one per rank
 ```
+Creates: `{output_dir}/amvN/amv/amv_source.mp4` and `amvN/amv/amv_metadata.json`
 
-### AMV Step 4: Analyze AMV(s)
-**Single AMV:**
-```bash
-python scripts/analyze_amv.py --amv-path "{output_dir}/amv/amv_source.mp4" --output-dir "{output_dir}"
-```
-- Detects natural scene cuts via ffmpeg
-- Extracts a keyframe per scene
-- Describes each scene using Claude Vision (Haiku)
-- Splits the AMV into `frames/scene_01.mp4`, `frames/scene_02.mp4`, etc.
-- Creates: `{output_dir}/amv/amv_analysis.json`
-
-**Multi-AMV:** analyze each in parallel:
+### AMV Step 6: Analyze AMVs
+Analyze each AMV in parallel:
 ```bash
 python scripts/analyze_amv.py --amv-path "{output_dir}/amv1/amv/amv_source.mp4" --output-dir "{output_dir}/amv1"
 python scripts/analyze_amv.py --amv-path "{output_dir}/amv2/amv/amv_source.mp4" --output-dir "{output_dir}/amv2"
 # ...one per AMV
 ```
+- Detects natural scene cuts via ffmpeg
+- Splits the AMV into `frames/scene_01.mp4`, `frames/scene_02.mp4`, etc. (pure ffmpeg, no API calls)
+- Creates: `{output_dir}/amvN/amv/amv_analysis.json`
 
 Optional flags: `--max-scenes 12` (default), `--min-scene-duration 3.0` (default, seconds)
 
-### AMV Step 5: CHECKPOINT — Review Clips
+### AMV Step 7: CHECKPOINT — Review Clips
 - Tell the user to open each `amvN/frames/` folder and watch the clips (navigate manually)
 - User deletes any clips they don't want used in the video
-- **Wait for user confirmation** before proceeding to script generation
+- **Before asking for confirmation**, calculate and show the screen time per rank block using the `duration_seconds` values from `script.json` — group by rank and sum scene durations. Format as a table: Rank | Scenes | Duration. This helps the user know how much footage each rank has before cutting.
+- **Wait for user confirmation** before proceeding
 - After confirmation, list how many clips remain per AMV so the user can verify
 
-### AMV Step 6: CHECKPOINT — Review AMV Analysis & Align Script
-- Read all `amv_analysis.json` files
-- Present: total duration, number of scenes, brief description of each scene per AMV
-- Compare the AMV clip descriptions against the draft script's `visual_prompt` fields
-- If a scene's `visual_prompt` doesn't match what the clips actually show, update it to reflect reality
-- Narration text stays unchanged unless the user requests a tone/topic change
-- Ask the user to confirm before proceeding to voice generation
-
-### AMV Step 7: Revise Script if Needed (YOU do this)
-If the AMV analysis revealed significant mismatches between the draft script and the available clips, update `script.json`:
-- Use the `amv` field (1–N) to route each scene to the correct AMV's clip pool
-- Scene durations should match the content rhythm (not necessarily the raw clip durations)
-- Narration drives the pacing — the compositor extends scenes to fit TTS audio
-- **Never assign `clip_index`** — omit it so clips cycle in sequence. Only use if user explicitly requests a specific clip.
-
-Write to `{output_dir}/script/script.json` and show the script summary.
-
-**Claude generates the script directly — do NOT spawn a subagent for script generation.** Read the AMV analyses and write the script in the conversation.
-
-**Target duration for ranking videos** — set `target_duration_seconds` to ~300s (5 minutes) for Top 5 rankings. Use 3 normal scenes per rank plus a 3-scene intro block. Never force the video into a short format. The goal is depth and retention, not brevity.
-
-For **single AMV**, scene structure follows the analysis:
-- `duration_seconds` per scene ≈ clip durations from analysis (compositor auto-extends for TTS)
-- `content_type` = `"amv"`
-- Omit `search_tags` — frames are already in `frames/`
-
-### AMV Step 8: CHECKPOINT — Approve Script
-- Present: title, number of scenes, total duration, narration preview
-- User can request tone/topic changes — regenerate narration if needed
+### AMV Step 8: CHECKPOINT — Approve Script (final review)
+- Re-read `script.json` and present: title, number of scenes, total duration, narration preview
+- The script was generated from the topic alone — user may want to tweak narration now that they've seen the actual clips
+- If changes are needed, rerun `generate_script.py` with an updated `--topic` or edit `script.json` manually
+- **Wait for user to confirm before proceeding to voice generation**
 
 ### AMV Step 8b: Generate Thumbnail
 ```bash
@@ -390,11 +367,22 @@ Only used when working with a local frame library. For AMV content, **omit `sear
 
 ## Script Generation Guidelines
 
+### Tone — Conversational & Genuine (applies to ALL scripts)
+Write narration like a knowledgeable friend talking to another anime fan — not a hype announcer, not a Wikipedia summary. Study these real examples:
+
+- **Reframe before explaining**: "Darker than Black is basically what if superpowers came with the world's dumbest side effects." — pitch the show from an unexpected angle first.
+- **Describe characters by behavior, not power**: "Ashaf, the calmest guy ever, and bro, he's smoking in almost every episode. Something crazy happens. He lights up." — not "Ashaf is an incredibly powerful mage."
+- **Embed personal reactions**: "She smiles so big you kind of forget to question it." — the narrator has a personality, not just information.
+- **Mix sentence lengths**: Long descriptive sentences followed by short punchy reactions. Not fragments the whole time.
+- **Specific vivid details**: What a character does, how they move, their habits. Never generic traits.
+- **Casual language when it fits**: "bro", "yeah", "nope", "kind of", "straight up" — sounds human, not scripted.
+- **No ALL CAPS**: Stress comes from word choice and rhythm, not capitalization.
+- **No superlatives**: Never "the most BROKEN", "absolute GOAT", "CHANGES EVERYTHING".
+- **No filler openers**: Never "Today we look at...", "In this video...", "Let's count down...".
+- **End on the character, not a comparison**: Close each rank by saying what makes them memorable — never "but that's why they're only rank N".
+
 ### For AMV:
-- Narration must match the real visual content of each AMV segment (use the `description` from `amv_analysis.json`)
 - Scene durations are a starting point — the compositor auto-extends scenes to fit TTS audio
-- Write engaging commentary: power rankings, character analysis, "what if" scenarios, storytelling
-- Match narration energy to the scene's mood (intense = fast-paced, emotional = slower)
 - Do NOT generate `search_tags` — frames are already split and in `frames/`
 - rank_transition scenes MUST have short narration_text (e.g., `"Number five."`) for rank card sync
 
@@ -404,20 +392,19 @@ When the topic is a ranking (Top 5, Top 10, etc.), always generate scenes in thi
 **Target duration: ~5 minutes (280–320s).** Ranking videos should be deep and engaging, not rushed. Use longer narration per rank to build storytelling depth. The intro block (scenes 1–3) must be especially compelling to maximize viewer retention.
 
 ```
-Scene 1:    scene_type="intro",           ~15s, high-energy hook — bold claim or teaser about #1, amv=<varied>
-Scene 2:    scene_type="normal",          ~10s, context/stakes — why this ranking matters, amv=<varied>
-Scene 3:    scene_type="normal",          ~10s, intro narration — set up the list and criteria, amv=<varied>
+Scene 1:    scene_type="intro",           ~12s, open with a personal reaction or vivid image that sets the mood — NOT a bold claim, amv=<varied>
+Scene 2:    scene_type="normal",          ~10s, brief context on why this ranking is worth watching, pivot into the countdown, amv=<varied>
 
 For each rank from N down to 1:
   Scene X:    scene_type="rank_transition", ~2.5s, rank=N, name="<rank label>", amv=N, narration_text="Number N."
-  Scene X+1:  scene_type="normal",          ~18s,  rank=N, series-specific tags, amv=N, character intro + background
-  Scene X+2:  scene_type="normal",          ~16s,  rank=N, series-specific tags, amv=N, why they rank here + key moment
-  Scene X+3:  scene_type="normal",          ~12s,  rank=N, series-specific tags, amv=N, what sets them apart / analysis
+  Scene X+1:  scene_type="normal",          ~20s,  rank=N, amv=N, reframe the character from an unexpected angle + who they are through behavior and personality, include one specific vivid detail
+  Scene X+2:  scene_type="normal",          ~18s,  rank=N, amv=N, their defining moment or key storyline narrated in present tense with sensory detail — make the viewer feel the scene
+  Scene X+3:  scene_type="normal",          ~12s,  rank=N, amv=N, what makes this character/moment memorable on its own terms. End on the character — never compare to the next rank.
 
-Last scene: scene_type="normal", ~20s, outro narration — wrap up + CTA (CTA overlay auto-added by compositor), amv=<any>
+Last scene: scene_type="normal", ~18s, outro — personal take on the list + genuine debate question (CTA overlay auto-added by compositor), amv=<any>
 ```
 
-**Intro retention rule**: The first 3 scenes are the most important for retention. Scene 1 must tease the #1 pick or ask a provocative question (e.g., "The number one spot will surprise you"). Scene 2 must give a reason to keep watching. Scene 3 sets up the criteria with energy.
+**Intro retention rule**: Scene 1 must open with a personal reaction or vivid image that hooks the viewer — something relatable or surprising, not a bold claim about rank 1. Scene 2 gives a genuine reason to keep watching. The tone is a friend recommending something, not a countdown announcement.
 
 **3 normal scenes per rank**: Each rank gets intro + analysis + "what sets them apart" scenes so the narration has real depth. Never compress to 2 scenes unless the user explicitly asks for a shorter video.
 
@@ -456,7 +443,9 @@ Last scene: scene_type="normal", ~20s, outro narration — wrap up + CTA (CTA ov
 
 ## Companion Shorts — Default After Every Video
 
-After the main video is approved and published, **always** offer to generate a companion Short. There are three Short formats available:
+After the main video is approved and published, **always** offer a companion Short with ready-to-pick topic suggestions drawn from the AMVs already downloaded for that video.
+
+There are three Short formats available:
 
 | Format | Slug | What it is | Best for |
 |--------|------|-----------|----------|
@@ -464,10 +453,38 @@ After the main video is approved and published, **always** offer to generate a c
 | **Iconic Moment Recap** | `recap` | One iconic scene narrated with context | Emotionally strong moments |
 | **Hidden Detail** | `detail` | Overlooked detail / foreshadowing reveal | Any anime |
 
-Ask the user: *"Quer fazer um Short complementar? Posso fazer uma Curiosidade, um Iconic Moment Recap ou um Hidden Detail. Qual prefere — e sobre qual anime?"*
+### How to offer the Short
 
-After the user picks format and anime, also ask:
-> "Posso usar os frames do `amv{N}/frames/` já extraído, ou quer usar um AMV novo para o Short?"
+Do NOT just ask "which format do you want?" — come with concrete topic suggestions already written. For each AMV used in the main video, propose 1–2 specific Short topics (one per format, choosing the best fit for that footage). Format:
+
+> "Quer fazer um Short? Aqui estão algumas sugestões usando os AMVs que já temos:
+>
+> **Curiosidade**
+> - *"Vegeta nunca treinou para superar Goku — ele treinou para provar que Goku estava errado"* (amv1 — Vegeta vs Beerus)
+> - *"Gohan foi planejado para ser o protagonista permanente após a saga Cell — Toriyama mudou de ideia"* (amv5 — Gohan SSJ2)
+>
+> **Recap**
+> - *"A transformação SSJ2 do Gohan — o momento que redefiniu Dragon Ball"* (amv5 — Gohan SSJ2)
+>
+> **Hidden Detail**
+> - *"O detalhe que ninguém percebeu na transformação Ultra Instinct do Goku"* (amv4 — Ultra Instinct)
+>
+> Qual você prefere? Ou quer um tema diferente?"
+
+Once the user picks a topic, immediately run `generate_script.py --short`:
+```bash
+python scripts/generate_script.py \
+  --output-dir "{output_dir}" \
+  --topic "{chosen topic}" \
+  --short {curiosity|recap|detail} \
+  --anime {anime-slug} \
+  --amv {N}
+```
+- `--amv N` locks all scenes to `amv=N` (the AMV the topic is based on) — always include it for Shorts
+- Output: `{output_dir}/script/script_{format}_{anime}.json`
+- Show the script summary and wait for approval before proceeding
+
+**No inline script generation** — always use `generate_script.py --short`. Never write the Short script manually in the conversation.
 
 ---
 
@@ -499,10 +516,8 @@ Total: 40–55s. No narration during scene 1 transitions if the visual does the 
 
 ### AMV Decision Checkpoint
 
-Before starting any Short, ask the user:
-> "Posso usar os frames existentes de `amv{N}/frames/`, ou quer baixar um AMV novo para este Short?"
-
-- **Use existing frames** → proceed directly with frames already in `{output_dir}/amvN/frames/`
+Before running `generate_script.py --short`, confirm which frames to use:
+- **Use existing frames** → proceed directly (script's `amv` field points to existing `amvN/frames/`)
 - **New AMV** (user provides URL) → download and analyze first:
   ```bash
   python scripts/fetch_amv.py --url "{new_amv_url}" --output-dir "{output_dir}/amv_short"
@@ -534,20 +549,29 @@ Before generating captions, choose `--color` based on the anime's mood:
 - Horror/dark → `red`
 - Default → `yellow`
 
-### Curiosidade Step 1: Generate script_curiosity_{anime}.json (YOU do this)
-- Write to `{output_dir}/script/script_curiosity_{anime_slug}.json`
-- **Structure:** 5 beats, 40–55s total (follow the **5-beat structure** above)
-- **Scene 1** (~3s): CLAIM — bold statement, the hook
-- **Scene 2** (~8s): CONFLICT — context that makes the claim surprising
-- **Scenes 3** (~15s): REVEAL — the actual fact/detail
-- **Scene 4** (~10s): IMPACT — why it matters / what fans miss
-- **Scene 5** (~5s): CTA — direct question to viewers
-- **Same `amv` field** as the main video (pointing to the correct AMV)
-- **Title** must contain `#Shorts`
-- **No `search_tags`** — frames already extracted
-- Pick a genuinely surprising fact (forbidden powers, hidden origins, story backstory, author intent, etc.)
+### Curiosidade Step 1: Generate script
+Run `generate_script.py --short curiosity` with the chosen topic:
+```bash
+python scripts/generate_script.py \
+  --output-dir "{output_dir}" \
+  --topic "{chosen topic hook}" \
+  --short curiosity \
+  --anime {anime-slug}
+```
+Output: `{output_dir}/script/script_curiosity_{anime}.json`
+- Title must contain `#Shorts` (generated automatically)
+- Show the script summary and wait for user approval before proceeding
 
-### Curiosidade Step 2: Generate Voice (with timestamps)
+### Curiosidade Step 2: Generate Short Cover
+```bash
+python scripts/generate_thumbnail.py \
+    --script-path "{output_dir}/script/script_curiosity_{anime}.json" \
+    --output-dir "{output_dir}" \
+    --shorts
+```
+Output: `{output_dir}/thumbnail/cover.jpg` (1080x1920 JPEG). Can run in parallel with voice generation.
+
+### Curiosidade Step 3: Generate Voice (with timestamps)
 ```bash
 python scripts/generate_voice.py \
   --script-path "{output_dir}/script/script_curiosity_{anime}.json" \
@@ -555,7 +579,7 @@ python scripts/generate_voice.py \
   --timestamps
 ```
 
-### Curiosidade Step 3: Generate Kinetic Captions
+### Curiosidade Step 4: Generate Kinetic Captions
 ```bash
 python scripts/generate_captions.py \
   --script-path "{output_dir}/script/script_curiosity_{anime}.json" \
@@ -566,7 +590,7 @@ python scripts/generate_captions.py \
 ```
 Choose `--color` based on the anime mood (see color selection guide above). Default: `yellow`.
 
-### Curiosidade Step 4: Compose Short
+### Curiosidade Step 5: Compose Short
 ```bash
 python scripts/compose_video.py \
   --script-path "{output_dir}/script/script_curiosity_{anime}.json" \
@@ -584,17 +608,17 @@ python scripts/compose_video.py \
 
 > **`--zoom-crop` is opt-in only** — add it only if explicitly requested for this Short.
 
-### Curiosidade Step 5: Publish to YouTube
+### Curiosidade Step 6: Publish to YouTube
 ```bash
 python scripts/publish_youtube.py \
   --script-path "{output_dir}/script/script_curiosity_{anime}.json" \
   --video-path "{output_dir}/short_curiosity_{anime}/final/final_short.mp4" \
-  --thumbnail-path "{output_dir}/thumbnail/thumbnail.jpg" \
+  --thumbnail-path "{output_dir}/thumbnail/cover.jpg" \
   --privacy "public" \
   --channel-id "UCyRJuLu9xr7mrRh-j52RQ9Q"
 ```
 
-### Curiosidade Step 6: Publish to TikTok
+### Curiosidade Step 7: Publish to TikTok
 After YouTube upload succeeds, publish the same video to TikTok (requires credentials):
 ```bash
 python scripts/publish_tiktok.py \
@@ -615,22 +639,24 @@ A Short (40–55s) narrating a single iconic scene: the context, the moment itse
 
 **When to use:** User asks for a recap of a specific scene, fight, or arc moment.
 
-### Recap Script: script_recap_{anime}.json (YOU do this)
-- Write to `{output_dir}/script/script_recap_{anime_slug}.json`
-- **Title** must contain `#Shorts`
-- **5-beat structure** (same as Curiosidade):
-  - Scene 1 (~3s): CLAIM — "Este momento mudou o anime para sempre" / tease what happens
-  - Scene 2 (~8s): CONFLICT — who are the characters, what led to this moment
-  - Scene 3 (~15s): REVEAL — narrate the moment itself in full sensory detail
-  - Scene 4 (~10s): IMPACT — what changed after this / why fans remember it
-  - Scene 5 (~5s): CTA — "Qual cena te marcou mais nesse anime? Comenta!"
-- `amv` field must point to the correct AMV with clips of that moment
+### Recap Script: generate via generate_script.py
+```bash
+python scripts/generate_script.py \
+  --output-dir "{output_dir}" \
+  --topic "{chosen topic hook}" \
+  --short recap \
+  --anime {anime-slug}
+```
+Output: `{output_dir}/script/script_recap_{anime}.json`
+- Title must contain `#Shorts`
+- Show the script summary and wait for user approval before proceeding
 
 ### Recap Pipeline
-Same steps as Curiosidade (Steps 2–6 above), with these filename substitutions:
+Same steps as Curiosidade (Steps 2–7 above), with these filename substitutions:
 - Script: `script_recap_{anime_slug}.json`
 - Output dir: `{output_dir}/short_recap_{anime_slug}/`
 - Final video: `{output_dir}/short_recap_{anime_slug}/final/final_short.mp4`
+- Cover thumbnail: `{output_dir}/thumbnail/cover.jpg` (generated in Step 2 with `--shorts`)
 
 ---
 
@@ -640,22 +666,24 @@ A Short (40–55s) revealing a detail, foreshadowing, or easter egg most viewers
 
 **When to use:** User asks for a "detalhe que ninguém viu" or foreshadowing Short.
 
-### Hidden Detail Script: script_detail_{anime}.json (YOU do this)
-- Write to `{output_dir}/script/script_detail_{anime_slug}.json`
-- **Title** must contain `#Shorts` and a hook like "O detalhe que NINGUÉM viu em {anime}"
-- **5-beat structure:**
-  - Scene 1 (~3s): CLAIM — "No episódio X de {anime} tem um detalhe que quase ninguém percebeu"
-  - Scene 2 (~8s): CONFLICT — describe the scene / moment where the detail appears
-  - Scene 3 (~15s): REVEAL — what the detail is, where exactly it appears, what it means
-  - Scene 4 (~10s): IMPACT — how it connects to future events / what the author intended
-  - Scene 5 (~5s): CTA — "Você tinha percebido? Comenta se pegou esse detalhe!"
-- `amv` field must point to an AMV that shows the relevant scene
+### Hidden Detail Script: generate via generate_script.py
+```bash
+python scripts/generate_script.py \
+  --output-dir "{output_dir}" \
+  --topic "{chosen topic hook}" \
+  --short detail \
+  --anime {anime-slug}
+```
+Output: `{output_dir}/script/script_detail_{anime}.json`
+- Title must contain `#Shorts` and a hook like "O detalhe que NINGUÉM viu em {anime}"
+- Show the script summary and wait for user approval before proceeding
 
 ### Hidden Detail Pipeline
-Same steps as Curiosidade (Steps 2–6 above), with these filename substitutions:
+Same steps as Curiosidade (Steps 2–7 above), with these filename substitutions:
 - Script: `script_detail_{anime_slug}.json`
 - Output dir: `{output_dir}/short_detail_{anime_slug}/`
 - Final video: `{output_dir}/short_detail_{anime_slug}/final/final_short.mp4`
+- Cover thumbnail: `{output_dir}/thumbnail/cover.jpg` (generated in Step 2 with `--shorts`)
 
 ---
 
@@ -673,7 +701,8 @@ Same steps as Curiosidade (Steps 2–6 above), with these filename substitutions
 - **ALWAYS sync rank card with audio** — rank_transition scenes must have narration_text so the card reveal syncs with the spoken announcement
 - **BGM: Freesound CC0 first** — use `--query` flag with `fetch_bgm.py` (CC0 license, zero Content ID claims). Fall back to `--search` (YouTube) only if Freesound returns nothing.
 - **Zoom-crop is opt-in** — never pass `--zoom-crop` to `compose_video.py` by default. Only add it when the user explicitly requests it at AMV URL submission time.
-- **Shorts hook rule** — Scene 1 of any Short must deliver the main claim by second 2. No setup, no question, no intro. Bold statement only.
+- **Shorts cover is mandatory** — always run `generate_thumbnail.py --shorts` before voice generation for every Short. Output is `cover.jpg` (1080x1920). Use it as `--thumbnail-path` when publishing the Short to YouTube.
+- **Dramatic/hype tone** — all scripts (main video and Shorts) must use the tone guidelines in the Script Generation section: short punchy sentences, superlatives, present-tense action, no filler openers.
 - **TikTok after every Short** — after publishing a Short to YouTube, always offer to publish to TikTok. Skip if `TIKTOK_CLIENT_KEY` is missing from `.env`.
 - **TikTok privacy default** — always use `--privacy SELF_ONLY` for TikTok (user reviews and publishes manually in TikTok Studio).
 

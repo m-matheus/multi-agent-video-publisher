@@ -1,4 +1,5 @@
 .env
+.tiktok_credentials.json
 .youtube_credentials.json
 output/
 __pycache__/
